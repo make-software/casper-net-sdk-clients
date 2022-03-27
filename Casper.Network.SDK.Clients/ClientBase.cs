@@ -10,11 +10,11 @@ namespace Casper.Network.SDK.Clients
     public class ClientBase
     {
         protected readonly string ChainName;
-        protected readonly NetCasperClient CasperClient;
+        protected readonly ICasperClient CasperClient;
 
         public HashKey ContractHash { get; protected set; }
 
-        public ClientBase(string nodeAddress, string chainName)
+        public ClientBase(ICasperClient casperClient, string chainName)
         {
             ChainName = chainName;
 
@@ -22,7 +22,7 @@ namespace Casper.Network.SDK.Clients
             {
                 LoggerStream = new StreamWriter(Console.OpenStandardOutput())
             };
-            CasperClient = new NetCasperClient(nodeAddress, loggingHandler);
+            CasperClient = casperClient;
         }
 
         protected async Task<T> GetNamedKey<T>(string path)

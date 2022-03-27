@@ -9,7 +9,7 @@ namespace Casper.Network.SDK.Clients
 {
     public class DeployHelper
     {
-        private NetCasperClient _casperClient;
+        private ICasperClient _casperClient;
 
         public Deploy Deploy { get; private set; }
 
@@ -25,7 +25,7 @@ namespace Casper.Network.SDK.Clients
             .FirstOrDefault(t => t.Type == TransformType.WriteContractPackage)
             ?.Key as HashKey ?? null;
 
-        public DeployHelper(Deploy deploy, NetCasperClient casperClient)
+        public DeployHelper(Deploy deploy, ICasperClient casperClient)
         {
             Deploy = deploy;
             _casperClient = casperClient;

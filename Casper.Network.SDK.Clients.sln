@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Casper.Network.SDK.Clients"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Casper.Network.SDK.Clients.Test", "Casper.Network.SDK.Clients.Test\Casper.Network.SDK.Clients.Test.csproj", "{75C8FFB3-A85D-4124-A4B2-DE66D5FAEF46}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Casper.Network.SDK.WebClients", "Casper.Network.SDK.WebClients\Casper.Network.SDK.WebClients.csproj", "{A5368E50-65F3-4627-843F-0BDB3DE3DEDA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{75C8FFB3-A85D-4124-A4B2-DE66D5FAEF46}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{75C8FFB3-A85D-4124-A4B2-DE66D5FAEF46}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{75C8FFB3-A85D-4124-A4B2-DE66D5FAEF46}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A5368E50-65F3-4627-843F-0BDB3DE3DEDA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A5368E50-65F3-4627-843F-0BDB3DE3DEDA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A5368E50-65F3-4627-843F-0BDB3DE3DEDA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A5368E50-65F3-4627-843F-0BDB3DE3DEDA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

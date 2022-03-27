@@ -3,70 +3,74 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
-using Casper.Network.SDK.JsonRpc;
+using Casper.Network.SDK.Clients;
 using Casper.Network.SDK.Types;
 using Casper.Network.SDK.Utils;
+using Casper.Network.SDK.Web;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Org.BouncyCastle.Utilities.Encoders;
 
-namespace Casper.Network.SDK.Clients
+namespace Casper.Network.SDK.WebClients
 {
-    public enum ERC20ClientErrors
+    public class ERC20ClientWeb : ERC20Client
     {
-        InvalidContext = UInt16.MaxValue,
-        InsufficientBalance = UInt16.MaxValue - 1,
-        InsufficientAllowance = UInt16.MaxValue - 2,
-        Overflow = UInt16.MaxValue - 3
-    }
+        private readonly IConfiguration _config;
+        private readonly ILogger<ERC20ClientWeb> _logger;
 
-    public class ERC20Client : ClientBase, IERC20Client
-    {
-        public string Name { get; private set; }
-
-        public string Symbol { get; private set; }
-
-        public byte Decimals { get; private set; }
-
-        public BigInteger TotalSupply { get; private set; }
-
-        public ERC20Client(ICasperClient casperClient, string chainName)
-            : base(casperClient, chainName)
+        public ERC20ClientWeb(ICasperClient casperRpcService,
+            IConfiguration config,
+            ILogger<ERC20ClientWeb> logger) 
+            : base(casperRpcService, config["Casper.Network.SDK.Web:ChainName"])
         {
+            _config = config;
+            _logger = logger;
         }
 
-        public async Task<bool> SetContractHash(PublicKey publicKey, string namedKey)
+        /*protected async Task<CLValue> GetNamedKey(string path)
+        {
+            var response = await CasperClient.QueryGlobalState(ContractHash, null, path);
+            var value = response.Parse().StoredValue?.CLValue;
+
+            if (value == null)
+                throw new Exception(
+                    $"Query for path '{{path}}' at contract '{ContractHash.ToString()} returned null value");
+
+            return value;
+        }
+
+        public async Task SetContractHash(PublicKey publicKey, string namedKey)
         {
             var response = await CasperClient.GetAccountInfo(publicKey);
             var result = response.Parse();
             var nk = result.Account.NamedKeys.FirstOrDefault(k => k.Name == namedKey);
             if (nk != null)
-                return await SetContractHash(nk.Key);
+                await SetContractHash(nk.Key);
 
             throw new Exception($"Named key '{namedKey}' not found.");
         }
 
-        public async Task<bool> SetContractHash(string contractHash)
+        public async Task SetContractHash(string contractHash)
         {
             var key = GlobalStateKey.FromString(contractHash);
-            return await SetContractHash(key);
+            await SetContractHash(key);
         }
 
-        public async Task<bool> SetContractHash(GlobalStateKey contractHash)
+        public async Task SetContractHash(GlobalStateKey contractHash)
         {
             ContractHash = contractHash as HashKey;
 
-            var result = await GetNamedKey<CLValue>("name");
+            var result = await GetNamedKey("name");
             Name = result.ToString();
 
-            result = await GetNamedKey<CLValue>("symbol");
+            result = await GetNamedKey("symbol");
             Symbol = result.ToString();
 
-            result = await GetNamedKey<CLValue>("decimals");
+            result = await GetNamedKey("decimals");
             Decimals = result.ToByte();
 
-            result = await GetNamedKey<CLValue>("total_supply");
+            result = await GetNamedKey("total_supply");
             TotalSupply = result.ToBigInteger();
-
-            return true;
         }
 
         public DeployHelper InstallContract(byte[] wasmBytes,
@@ -181,7 +185,7 @@ namespace Casper.Network.SDK.Clients
             var accountHash = new AccountHashKey(ownerPK);
             var dictItem = Convert.ToBase64String(accountHash.GetBytes());
 
-            var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
+            var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(), 
                 "balances", dictItem);
             var result = response.Parse();
             return result.StoredValue.CLValue.ToBigInteger();
@@ -203,10 +207,10 @@ namespace Casper.Network.SDK.Clients
 
             var dictItem = Hex.ToHexString(hash);
 
-            var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
+            var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(), 
                 "allowances", dictItem);
             var result = response.Parse();
             return result.StoredValue.CLValue.ToBigInteger();
-        }
+        }*/
     }
 }
