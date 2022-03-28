@@ -91,46 +91,47 @@ namespace Casper.Network.SDK.Clients.Test
         }
 
         [Test, Order(2)]
-        public async Task SetContractHashTest()
-        {
-            Assert.IsNotNull(_contractHash, "This test must run after InstallContractTest");
-            _cep47Client = new CEP47Client(new NetCasperClient(_nodeAddress), _chainName);
-
-            var b = await _cep47Client.SetContractHash(_contractHash.ToString());
-            Assert.IsTrue(b);
-
-            Assert.AreEqual(TOKEN_NAME, _cep47Client.Name);
-            Assert.AreEqual(TOKEN_SYMBOL, _cep47Client.Symbol);
-            Assert.AreEqual(BigInteger.Zero, _cep47Client.TotalSupply);
-
-            Assert.IsNotNull(_cep47Client.Meta);
-
-            Assert.IsNotNull(_cep47Client.ContractHash);
-            Assert.AreEqual(_contractHash.ToString(), _cep47Client.ContractHash.ToString());
-        }
-
-        [Test, Order(2)]
         public async Task SetContractHashFromPKTest()
         {
-            var client1 = new CEP47Client(new NetCasperClient(_nodeAddress), _chainName);
+            _cep47Client = new CEP47Client(new NetCasperClient(_nodeAddress), _chainName);
 
-            var b = await client1.SetContractHash(_ownerAccount.PublicKey, $"{TOKEN_NAME}_contract_hash");
+            var b = await _cep47Client.SetContractHash(_ownerAccount.PublicKey, $"{TOKEN_NAME}_contract_hash");
             Assert.IsTrue(b);
 
-            if (_cep47Client == null)
-            {
-                _cep47Client = client1;
-                _contractHash = client1.ContractHash;
-            }
-            else
-                Assert.AreEqual(_contractHash.ToString(), client1.ContractHash.ToString());
+            if (_contractHash != null)
+                Assert.AreEqual(_contractHash.ToString(), _cep47Client.ContractHash.ToString());
+        }
+        
+        [Test, Order(2)]
+        public async Task CatchSetContractHashWrongKeyTest()
+        {
+            var client = new CEP47Client(new NetCasperClient(_nodeAddress), _chainName);
 
             // catch error for wrong named key
             //
             var ex = Assert.ThrowsAsync<Exception>(async () =>
-                await client1.SetContractHash(_ownerAccount.PublicKey, "wrong_named_key"));
+                await client.SetContractHash(_ownerAccount.PublicKey, "wrong_named_key"));
             Assert.IsNotNull(ex);
             Assert.AreEqual("Named key 'wrong_named_key' not found.", ex.Message);
+        }
+
+        [Test, Order(3)]
+        public async Task SetContractHashTest()
+        {
+            Assert.IsNotNull(_contractHash, "This test must run after InstallContractTest");
+            var client = new CEP47Client(new NetCasperClient(_nodeAddress), _chainName);
+
+            var b = await client.SetContractHash(_contractHash.ToString());
+            Assert.IsTrue(b);
+
+            Assert.AreEqual(TOKEN_NAME, client.Name);
+            Assert.AreEqual(TOKEN_SYMBOL, client.Symbol);
+            Assert.AreEqual(BigInteger.Zero, client.TotalSupply);
+
+            Assert.IsNotNull(client.Meta);
+
+            Assert.IsNotNull(client.ContractHash);
+            Assert.AreEqual(_contractHash.ToString(), client.ContractHash.ToString());
         }
 
         [Test, Order(3)]
@@ -185,6 +186,38 @@ namespace Casper.Network.SDK.Clients.Test
         {
             var balanceOf = await _cep47Client.GetBalanceOf(_user2Account.PublicKey);
             Assert.AreEqual(BigInteger.One, balanceOf);
+        }
+        
+        [Test, Order(5)]
+        public async Task UpdateTokenMetadataTest()
+        {
+            var tokenMeta = new Dictionary<string, string>
+            {
+                {"color", "lightgreen"},
+                {"name", "drako"}
+            };
+            var deployHelper = _cep47Client.UpdateTokenMetadata(_user2Account.PublicKey,
+                new BigInteger(1),
+                tokenMeta,
+                1_000_000_000);
+
+            Assert.IsNotNull(deployHelper);
+            Assert.IsNotNull(deployHelper.Deploy);
+
+            deployHelper.Sign(_user2Account);
+
+            await deployHelper.PutDeploy();
+
+            await deployHelper.WaitDeployProcess();
+
+            Assert.IsTrue(deployHelper.IsSuccess);
+            Assert.IsNotNull(deployHelper.ExecutionResult);
+            Assert.IsTrue(deployHelper.ExecutionResult.Cost > 0);
+            
+            var tm = await _cep47Client.GetTokenMetadata(new BigInteger(1));
+            Assert.AreEqual(2, tm.Keys.Count);
+            Assert.AreEqual("lightgreen", tm["color"]);
+            Assert.AreEqual("drako", tm["name"]);
         }
 
         [Test, Order(5)]

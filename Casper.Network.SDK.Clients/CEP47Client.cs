@@ -360,6 +360,33 @@ namespace Casper.Network.SDK.Clients
             return null;
         }
 
+        public DeployHelper UpdateTokenMetadata(PublicKey senderPk,
+            BigInteger tokenId,
+            Dictionary<string, string> meta,
+            BigInteger paymentMotes,
+            ulong gasPrice = 1,
+            ulong ttl = 1800000)
+        {
+            var dict = new Dictionary<CLValue, CLValue>();
+            foreach (var kvp in meta)
+                dict.Add(kvp.Key, kvp.Value);
+            
+            var deploy = DeployTemplates.ContractCall(ContractHash,
+                "update_token_meta",
+                new List<NamedArg>()
+                {
+                    new NamedArg("token_id", tokenId),
+                    new NamedArg("token_meta", CLValue.Map(dict))
+                },
+                senderPk,
+                paymentMotes,
+                ChainName,
+                gasPrice,
+                ttl);
+
+            return new DeployHelper(deploy, CasperClient);
+        }
+
         public DeployHelper BurnOne(PublicKey senderPk,
             PublicKey ownerPk,
             BigInteger tokenId,
