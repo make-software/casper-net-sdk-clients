@@ -9,12 +9,14 @@ namespace Casper.Network.SDK.Clients
 {
     public class ClientBase
     {
+        protected const ulong DEFAULT_GAS_PRICE = 1;
+
         protected readonly string ChainName;
         protected readonly ICasperClient CasperClient;
 
         public HashKey ContractHash { get; protected set; }
 
-        public ClientBase(ICasperClient casperClient, string chainName)
+        protected ClientBase(ICasperClient casperClient, string chainName)
         {
             ChainName = chainName;
 
@@ -39,8 +41,7 @@ namespace Casper.Network.SDK.Clients
             if (typeof(T) == typeof(ContractPackage))
                 return (T) Convert.ChangeType(result.StoredValue?.ContractPackage, typeof(T));
             
-            throw new Exception("Unsupported StoredValue type: " + typeof(T).ToString());
+            throw new Exception("Unsupported StoredValue type: " + typeof(T));
         }
-
     }
 }

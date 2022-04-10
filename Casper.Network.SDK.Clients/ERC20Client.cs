@@ -76,7 +76,6 @@ namespace Casper.Network.SDK.Clients
             BigInteger totalSupply,
             PublicKey accountPK,
             BigInteger paymentMotes,
-            ulong gasPrice = 1,
             ulong ttl = 1800000
         )
         {
@@ -86,7 +85,7 @@ namespace Casper.Network.SDK.Clients
                 Timestamp = DateUtils.ToEpochTime(DateTime.UtcNow),
                 Ttl = ttl,
                 ChainName = ChainName,
-                GasPrice = gasPrice
+                GasPrice = DEFAULT_GAS_PRICE
             };
             var payment = new ModuleBytesDeployItem(paymentMotes);
 
@@ -109,7 +108,6 @@ namespace Casper.Network.SDK.Clients
             PublicKey recipientPk,
             BigInteger amount,
             BigInteger paymentMotes,
-            ulong gasPrice = 1,
             ulong ttl = 1800000)
         {
             var deploy = DeployTemplates.ContractCall(ContractHash,
@@ -122,7 +120,7 @@ namespace Casper.Network.SDK.Clients
                 ownerPK,
                 paymentMotes,
                 ChainName,
-                gasPrice,
+                DEFAULT_GAS_PRICE,
                 ttl);
 
             return new DeployHelper(deploy, CasperClient);
@@ -132,7 +130,6 @@ namespace Casper.Network.SDK.Clients
             PublicKey spenderPk,
             BigInteger amount,
             BigInteger paymentMotes,
-            ulong gasPrice = 1,
             ulong ttl = 1800000)
         {
             var deploy = DeployTemplates.ContractCall(ContractHash,
@@ -145,7 +142,7 @@ namespace Casper.Network.SDK.Clients
                 ownerPK,
                 paymentMotes,
                 ChainName,
-                gasPrice,
+                DEFAULT_GAS_PRICE,
                 ttl);
 
             return new DeployHelper(deploy, CasperClient);
@@ -156,7 +153,6 @@ namespace Casper.Network.SDK.Clients
             PublicKey recipientPk,
             BigInteger amount,
             BigInteger paymentMotes,
-            ulong gasPrice = 1,
             ulong ttl = 1800000)
         {
             var deploy = DeployTemplates.ContractCall(ContractHash,
@@ -170,7 +166,7 @@ namespace Casper.Network.SDK.Clients
                 spenderPK,
                 paymentMotes,
                 ChainName,
-                gasPrice,
+                DEFAULT_GAS_PRICE,
                 ttl);
 
             return new DeployHelper(deploy, CasperClient);

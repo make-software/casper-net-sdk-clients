@@ -3,10 +3,9 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
-using Casper.Network.SDK.JsonRpc;
-
 
 namespace Casper.Network.SDK.Clients.Test
 {
@@ -25,6 +24,8 @@ namespace Casper.Network.SDK.Clients.Test
 
         private const string TOKEN_NAME = "DragonsNFT";
         private const string TOKEN_SYMBOL = "DGNFT";
+
+        private List<CEP47Event> events;
 
         [OneTimeSetUp]
         public void Init()
@@ -100,10 +101,14 @@ namespace Casper.Network.SDK.Clients.Test
 
             if (_contractHash != null)
                 Assert.AreEqual(_contractHash.ToString(), _cep47Client.ContractHash.ToString());
+
+            events = new List<CEP47Event>();
+            _cep47Client.OnCEP47Event += evt => events.Add(evt);
+            await _cep47Client.ListenToEvents();
         }
         
         [Test, Order(2)]
-        public async Task CatchSetContractHashWrongKeyTest()
+        public void CatchSetContractHashWrongKeyTest()
         {
             var client = new CEP47Client(new NetCasperClient(_nodeAddress), _chainName);
 
@@ -346,7 +351,7 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.AreEqual(user1Acct, owner10.ToString());
         }
 
-        [Test, Order(8)]
+        [Test, Order(7)]
         public async Task ApproveTest()
         {
             var deployHelper = _cep47Client.Approve(_user2Account.PublicKey,
@@ -368,7 +373,7 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.IsTrue(deployHelper.ExecutionResult.Cost > 0);
         }
 
-        [Test, Order(9)]
+        [Test, Order(8)]
         public async Task GetApprovedSpenderTest()
         {
             var spender = await _cep47Client.GetApprovedSpender(_user2Account.PublicKey, new BigInteger(12));
@@ -376,7 +381,7 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.AreEqual(user1Acct, spender.ToString());
         }
 
-        [Test, Order(10)]
+        [Test, Order(9)]
         public async Task TransferFromTest()
         {
             var deployHelper = _cep47Client.TransferTokenFrom(_user1Account.PublicKey,
@@ -403,7 +408,7 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.AreEqual(ownerAcct, owner12.ToString());
         }
 
-        [Test, Order(11)]
+        [Test, Order(10)]
         public async Task BurnTest()
         {
             var deployHelper = _cep47Client.BurnOne(_user1Account.PublicKey,
@@ -418,38 +423,73 @@ namespace Casper.Network.SDK.Clients.Test
 
             await deployHelper.PutDeploy();
 
-            await deployHelper.WaitDeployProcess();
+            var task1 = deployHelper.WaitDeployProcess().ContinueWith(async _ =>
+            {
+                Assert.IsTrue(deployHelper.IsSuccess);
+                Assert.IsNotNull(deployHelper.ExecutionResult);
+                Assert.IsTrue(deployHelper.ExecutionResult.Cost > 0);
+                
+                var meta = await _cep47Client.GetTokenMetadata(new BigInteger(20));
+                Assert.IsNull(meta); // dictionary returns None, converted to null
+            });
 
-            Assert.IsTrue(deployHelper.IsSuccess);
-            Assert.IsNotNull(deployHelper.ExecutionResult);
-            Assert.IsTrue(deployHelper.ExecutionResult.Cost > 0);
-
-            var meta = await _cep47Client.GetTokenMetadata(new BigInteger(20));
-            Assert.IsNull(meta); // dictionary returns None, converted to null
-
-            deployHelper = _cep47Client.BurnMany(_user1Account.PublicKey,
+            var deployHelper2 = _cep47Client.BurnMany(_user1Account.PublicKey,
                 _user1Account.PublicKey,
                 new List<BigInteger>() {new(21), new(22)},
                 2_000_000_000);
 
-            Assert.IsNotNull(deployHelper);
-            Assert.IsNotNull(deployHelper.Deploy);
+            Assert.IsNotNull(deployHelper2);
+            Assert.IsNotNull(deployHelper2.Deploy);
 
-            deployHelper.Sign(_user1Account);
+            deployHelper2.Sign(_user1Account);
 
-            await deployHelper.PutDeploy();
+            await deployHelper2.PutDeploy();
 
-            await deployHelper.WaitDeployProcess();
+            var task2 = deployHelper2.WaitDeployProcess().ContinueWith(async _ =>
+            {
+                Assert.IsTrue(deployHelper2.IsSuccess);
+                Assert.IsNotNull(deployHelper2.ExecutionResult);
+                Assert.IsTrue(deployHelper2.ExecutionResult.Cost > 0);
 
-            Assert.IsTrue(deployHelper.IsSuccess);
-            Assert.IsNotNull(deployHelper.ExecutionResult);
-            Assert.IsTrue(deployHelper.ExecutionResult.Cost > 0);
+                var meta2 = await _cep47Client.GetTokenMetadata(new BigInteger(21));
+                Assert.IsNull(meta2); // dictionary returns None, converted to null
 
-            var meta2 = await _cep47Client.GetTokenMetadata(new BigInteger(21));
-            Assert.IsNull(meta2); // dictionary returns None, converted to null
+                var meta3 = await _cep47Client.GetTokenMetadata(new BigInteger(22));
+                Assert.IsNull(meta3); // dictionary returns None, converted to null
+            });
 
-            var meta3 = await _cep47Client.GetTokenMetadata(new BigInteger(22));
-            Assert.IsNull(meta3); // dictionary returns None, converted to null
+            Task.WaitAll(task1, task2);
+        }
+
+        [Test, Order(11)]
+        public void EventsTriggeredTest()
+        {
+            var ev = events.FirstOrDefault(evt => evt.EventType == CEP47EventType.MintOne &&
+                                                   evt.TokenId == "1");
+            Assert.IsNotNull(ev);
+            Assert.IsNotNull(ev.ContractPackageHash);
+            Assert.IsNotNull(ev.DeployHash);
+            Assert.IsNotNull(ev.Recipient);
+            
+            Assert.AreEqual(7, events.Count(evt => evt.EventType == CEP47EventType.MintOne));
+
+            Assert.IsTrue(events.Any(evt => evt.EventType == CEP47EventType.Transfer &&
+                                            evt.TokenId == "10"));
+            Assert.IsTrue(events.Any(evt => evt.EventType == CEP47EventType.Transfer &&
+                                            evt.TokenId == "11"));
+            Assert.IsTrue(events.Any(evt => evt.EventType == CEP47EventType.Transfer &&
+                                            evt.TokenId == "12"));
+            
+            ev = events.FirstOrDefault(evt => evt.EventType == CEP47EventType.Approve &&
+                                            evt.TokenId == "12");
+            Assert.IsNotNull(ev);
+            Assert.IsNotNull(ev.Owner);
+            Assert.IsNotNull(ev.Spender);
+            
+            Assert.AreEqual(3, events.Count(evt => evt.EventType == CEP47EventType.BurnOne));
+            
+            Assert.IsTrue(events.Any(evt => evt.EventType == CEP47EventType.UpdateMetadata &&
+                                            evt.TokenId == "1"));
         }
     }
 }

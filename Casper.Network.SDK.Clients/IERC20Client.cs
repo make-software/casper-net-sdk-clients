@@ -6,13 +6,13 @@ namespace Casper.Network.SDK.Clients
 {
     public interface IERC20Client
     {
-        public string Name { get; }
+        string Name { get; }
 
-        public string Symbol { get; }
+        string Symbol { get; }
 
-        public byte Decimals { get; }
+        byte Decimals { get; }
 
-        public BigInteger TotalSupply { get; }
+        BigInteger TotalSupply { get; }
 
         Task<bool> SetContractHash(PublicKey publicKey, string namedKey);
 
@@ -27,7 +27,6 @@ namespace Casper.Network.SDK.Clients
             BigInteger totalSupply,
             PublicKey accountPK,
             BigInteger paymentMotes,
-            ulong gasPrice = 1,
             ulong ttl = 1800000
         );
 
@@ -35,14 +34,12 @@ namespace Casper.Network.SDK.Clients
             PublicKey recipientPk,
             BigInteger amount,
             BigInteger paymentMotes,
-            ulong gasPrice = 1,
             ulong ttl = 1800000);
 
         DeployHelper ApproveSpender(PublicKey ownerPK,
             PublicKey spenderPk,
             BigInteger amount,
             BigInteger paymentMotes,
-            ulong gasPrice = 1,
             ulong ttl = 1800000);
 
         DeployHelper TransferTokensFromOwner(PublicKey spenderPK,
@@ -50,13 +47,10 @@ namespace Casper.Network.SDK.Clients
             PublicKey recipientPk,
             BigInteger amount,
             BigInteger paymentMotes,
-            ulong gasPrice = 1,
             ulong ttl = 1800000);
 
         Task<BigInteger> GetBalance(PublicKey ownerPK);
 
         Task<BigInteger> GetAllowance(PublicKey ownerPK, PublicKey spenderPK);
     }
-
 }
-
