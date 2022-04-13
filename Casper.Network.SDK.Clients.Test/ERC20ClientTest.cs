@@ -18,6 +18,10 @@ namespace Casper.Network.SDK.Clients.Test
         private KeyPair _user1Account;
         private KeyPair _user2Account;
 
+        private GlobalStateKey _ownerAccountKey;
+        private GlobalStateKey _user1AccountKey;
+        private GlobalStateKey _user2AccountKey;
+
         private HashKey _contractHash;
         private ERC20Client _erc20Client;
 
@@ -42,16 +46,19 @@ namespace Casper.Network.SDK.Clients.Test
                              "/TestData/owneract.pem";
             _ownerAccount = KeyPair.FromPem(fkFilename);
             Assert.IsNotNull(_ownerAccount, $"Cannot read owner key from '{fkFilename}");
+            _ownerAccountKey = new AccountHashKey(_ownerAccount.PublicKey);
             
             var uk1Filename = TestContext.CurrentContext.TestDirectory +
                              "/TestData/user1act.pem";
             _user1Account = KeyPair.FromPem(uk1Filename);
             Assert.IsNotNull(_user1Account, $"Cannot read owner key from '{uk1Filename}");
+            _user1AccountKey = new AccountHashKey(_user1Account.PublicKey);
 
             var uk2Filename = TestContext.CurrentContext.TestDirectory +
                               "/TestData/user2act.pem";
             _user2Account = KeyPair.FromPem(uk2Filename);
             Assert.IsNotNull(_user2Account, $"Cannot read owner key from '{uk2Filename}");
+            _user2AccountKey = new AccountHashKey(_user2Account.PublicKey);
         }
 
         [Test, Order(1)]
@@ -87,38 +94,42 @@ namespace Casper.Network.SDK.Clients.Test
         }
 
         [Test, Order(2)]
-        public async Task SetContractHashTest()
-        {
-            Assert.IsNotNull(_contractHash, "This test must run after InstallContractTest");
-            _erc20Client = new ERC20Client(new NetCasperClient(_nodeAddress), _chainName);
-
-            var b = await _erc20Client.SetContractHash(_contractHash.ToString());
-            Assert.IsTrue(b);
-            
-            Assert.AreEqual(TOKEN_NAME, _erc20Client.Name);
-            Assert.AreEqual(TOKEN_SYMBOL, _erc20Client.Symbol);
-            Assert.AreEqual(TOKEN_DECIMALS, _erc20Client.Decimals);
-            Assert.AreEqual(BigInteger.Parse(TOKEN_SUPPLY), _erc20Client.TotalSupply);
-            
-            Assert.IsNotNull(_erc20Client.ContractHash);
-            Assert.AreEqual(_contractHash.ToString(), _erc20Client.ContractHash.ToString());
-        }
-
-        [Test, Order(2)]
         public async Task SetContractHashFromPKTest()
         {
-            var client1 = new ERC20Client(new NetCasperClient(_nodeAddress), _chainName);
+            _erc20Client = new ERC20Client(new NetCasperClient(_nodeAddress), _chainName);
 
-            var b = await client1.SetContractHash(_ownerAccount.PublicKey, "erc20_token_contract");
+            var b = await _erc20Client.SetContractHash(_ownerAccount.PublicKey, "erc20_token_contract");
             Assert.IsTrue(b);
-            Assert.AreEqual(_contractHash.ToString(), client1.ContractHash.ToString());
-            
+            Assert.AreEqual(_contractHash.ToString(), _erc20Client.ContractHash.ToString());
+        }
+        
+        [Test, Order(2)]
+        public void CatchSetContractHashWrongKeyTest()
+        {
             // catch error for wrong named key
             //
             var ex = Assert.ThrowsAsync<Exception>(async () =>
-                await client1.SetContractHash(_ownerAccount.PublicKey, "wrong_named_key"));
+                await _erc20Client.SetContractHash(_ownerAccount.PublicKey, "wrong_named_key"));
             Assert.IsNotNull(ex);
             Assert.AreEqual("Named key 'wrong_named_key' not found.", ex.Message);
+        }
+
+        [Test, Order(3)]
+        public async Task SetContractHashTest()
+        {
+            Assert.IsNotNull(_contractHash, "This test must run after InstallContractTest");
+            var client = new ERC20Client(new NetCasperClient(_nodeAddress), _chainName);
+
+            var b = await client.SetContractHash(_contractHash.ToString());
+            Assert.IsTrue(b);
+            
+            Assert.AreEqual(TOKEN_NAME, client.Name);
+            Assert.AreEqual(TOKEN_SYMBOL, client.Symbol);
+            Assert.AreEqual(TOKEN_DECIMALS, client.Decimals);
+            Assert.AreEqual(BigInteger.Parse(TOKEN_SUPPLY), client.TotalSupply);
+            
+            Assert.IsNotNull(client.ContractHash);
+            Assert.AreEqual(_contractHash.ToString(), client.ContractHash.ToString());
         }
 
         [Test, Order(3)]
@@ -127,7 +138,7 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.IsNotNull(_erc20Client, "This test must run after SetContractHashTest");
 
             var deployHelper = _erc20Client.TransferTokens(_ownerAccount.PublicKey,
-                _user2Account.PublicKey,
+                _user2AccountKey,
                 10_000,
                 1_000_000_000);
             
@@ -151,7 +162,7 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.IsNotNull(_erc20Client, "This test must run after SetContractHashTest");
 
             var deployHelper = _erc20Client.ApproveSpender(_ownerAccount.PublicKey,
-                _user1Account.PublicKey,
+                _user1AccountKey,
                 500_000, 
                 1_000_000_000);
             
@@ -172,10 +183,10 @@ namespace Casper.Network.SDK.Clients.Test
         [Test, Order(4)]
         public async Task GetBalanceTest()
         {
-            var balanceOfUser2 = await _erc20Client.GetBalance(_user2Account.PublicKey);
+            var balanceOfUser2 = await _erc20Client.GetBalance(_user2AccountKey);
             Assert.AreEqual((BigInteger)10000, balanceOfUser2);
             
-            var balanceOfOwner = await _erc20Client.GetBalance(_ownerAccount.PublicKey);
+            var balanceOfOwner = await _erc20Client.GetBalance(_ownerAccountKey);
             Assert.AreEqual(BigInteger.Parse(TOKEN_SUPPLY), balanceOfOwner+balanceOfUser2);
         }
 
@@ -183,8 +194,8 @@ namespace Casper.Network.SDK.Clients.Test
         public async Task TransferTokensFromTest()
         {
             var deployHelper = _erc20Client.TransferTokensFromOwner(_user1Account.PublicKey,
-                _ownerAccount.PublicKey,
-                _user2Account.PublicKey,
+               _ownerAccountKey,
+                _contractHash,
                 100_000, 
                 1_000_000_000);
             
@@ -205,20 +216,24 @@ namespace Casper.Network.SDK.Clients.Test
         [Test, Order(6)]
         public async Task AllowanceTest()
         {
-            var allowanceOfUser1 = await _erc20Client.GetAllowance(_ownerAccount.PublicKey,
-                _user1Account.PublicKey);
+            var allowanceOfUser1 = await _erc20Client.GetAllowance(_ownerAccountKey,
+                _user1AccountKey);
             Assert.AreEqual((BigInteger)400_000, allowanceOfUser1);
             
-            var balanceOfUser2 = await _erc20Client.GetBalance(_user2Account.PublicKey);
-            Assert.AreEqual((BigInteger)110000, balanceOfUser2);
+            var balanceOfUser2 = await _erc20Client.GetBalance(_user2AccountKey);
+            Assert.AreEqual((BigInteger)10_000, balanceOfUser2);
             
-            var balanceOfOwner = await _erc20Client.GetBalance(_ownerAccount.PublicKey);
-            Assert.AreEqual(BigInteger.Parse(TOKEN_SUPPLY), balanceOfOwner+balanceOfUser2);
+            var balanceOfContract = await _erc20Client.GetBalance(_contractHash);
+            Assert.AreEqual((BigInteger)100_000, balanceOfContract);
+            
+            var balanceOfOwner = await _erc20Client.GetBalance(_ownerAccountKey);
+            Assert.AreEqual(BigInteger.Parse(TOKEN_SUPPLY), balanceOfOwner+balanceOfUser2+balanceOfContract);
             
             // catch errors for not existing allowances
             //
             var ex = Assert.ThrowsAsync<RpcClientException>(async () =>
-                await _erc20Client.GetAllowance(_ownerAccount.PublicKey, _user2Account.PublicKey));
+                await _erc20Client.GetAllowance(_ownerAccountKey, 
+                    _user2AccountKey));
             Assert.IsNotNull(ex);
             Assert.IsTrue(ex.Message.Contains("Code: -32003"));
             
@@ -228,7 +243,7 @@ namespace Casper.Network.SDK.Clients.Test
         public void CatchAccountBalanceNotFoundTest()
         {
             var ex = Assert.ThrowsAsync<RpcClientException>(async () =>
-                await _erc20Client.GetBalance(_user1Account.PublicKey));
+                await _erc20Client.GetBalance(_user1AccountKey));
             Assert.IsNotNull(ex);
             Assert.AreEqual(-32003, ex.RpcError.Code);
         }
@@ -237,7 +252,7 @@ namespace Casper.Network.SDK.Clients.Test
         public void CatchAllowanceNotFoundTest()
         {
             var ex = Assert.ThrowsAsync<RpcClientException>(async () =>
-                await _erc20Client.GetAllowance(_ownerAccount.PublicKey, _user2Account.PublicKey));
+                await _erc20Client.GetAllowance(_ownerAccountKey, _user2AccountKey));
             Assert.IsNotNull(ex);
             Assert.AreEqual(-32003, ex.RpcError.Code);
         }
@@ -248,7 +263,7 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.IsNotNull(_erc20Client, "This test must run after SetContractHashTest");
 
             var deployHelper = _erc20Client.TransferTokens(_user2Account.PublicKey,
-                _ownerAccount.PublicKey,
+               _ownerAccountKey,
                 300_000,
                 1_000_000_000);
             
@@ -268,4 +283,3 @@ namespace Casper.Network.SDK.Clients.Test
         }
     }
 }
-

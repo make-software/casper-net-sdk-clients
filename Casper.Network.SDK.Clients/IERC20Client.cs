@@ -31,26 +31,26 @@ namespace Casper.Network.SDK.Clients
         );
 
         DeployHelper TransferTokens(PublicKey ownerPK,
-            PublicKey recipientPk,
+            GlobalStateKey recipientKey,
             BigInteger amount,
             BigInteger paymentMotes,
             ulong ttl = 1800000);
 
         DeployHelper ApproveSpender(PublicKey ownerPK,
-            PublicKey spenderPk,
+            GlobalStateKey spenderKey,
             BigInteger amount,
             BigInteger paymentMotes,
             ulong ttl = 1800000);
 
         DeployHelper TransferTokensFromOwner(PublicKey spenderPK,
-            PublicKey ownerPk,
-            PublicKey recipientPk,
+            GlobalStateKey ownerKey,
+            GlobalStateKey recipientKey,
             BigInteger amount,
             BigInteger paymentMotes,
             ulong ttl = 1800000);
 
-        Task<BigInteger> GetBalance(PublicKey ownerPK);
+        Task<BigInteger> GetBalance(GlobalStateKey ownerKey);
 
-        Task<BigInteger> GetAllowance(PublicKey ownerPK, PublicKey spenderPK);
+        Task<BigInteger> GetAllowance(GlobalStateKey ownerKey, GlobalStateKey spenderKey);
     }
 }

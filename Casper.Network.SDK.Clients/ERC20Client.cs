@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
-using Casper.Network.SDK.JsonRpc;
 using Casper.Network.SDK.Types;
 using Casper.Network.SDK.Utils;
 using Org.BouncyCastle.Utilities.Encoders;
@@ -105,7 +104,7 @@ namespace Casper.Network.SDK.Clients
         }
 
         public DeployHelper TransferTokens(PublicKey ownerPK,
-            PublicKey recipientPk,
+            GlobalStateKey recipientKey,
             BigInteger amount,
             BigInteger paymentMotes,
             ulong ttl = 1800000)
@@ -114,7 +113,7 @@ namespace Casper.Network.SDK.Clients
                 "transfer",
                 new List<NamedArg>()
                 {
-                    new NamedArg("recipient", CLValue.Key(new AccountHashKey(recipientPk))),
+                    new NamedArg("recipient", CLValue.Key(recipientKey)),
                     new NamedArg("amount", CLValue.U256(amount))
                 },
                 ownerPK,
@@ -127,7 +126,7 @@ namespace Casper.Network.SDK.Clients
         }
 
         public DeployHelper ApproveSpender(PublicKey ownerPK,
-            PublicKey spenderPk,
+            GlobalStateKey spenderKey,
             BigInteger amount,
             BigInteger paymentMotes,
             ulong ttl = 1800000)
@@ -136,7 +135,7 @@ namespace Casper.Network.SDK.Clients
                 "approve",
                 new List<NamedArg>()
                 {
-                    new NamedArg("spender", CLValue.Key(new AccountHashKey(spenderPk))),
+                    new NamedArg("spender", CLValue.Key(spenderKey)),
                     new NamedArg("amount", CLValue.U256(amount))
                 },
                 ownerPK,
@@ -149,8 +148,8 @@ namespace Casper.Network.SDK.Clients
         }
 
         public DeployHelper TransferTokensFromOwner(PublicKey spenderPK,
-            PublicKey ownerPk,
-            PublicKey recipientPk,
+            GlobalStateKey ownerKey,
+            GlobalStateKey recipientKey,
             BigInteger amount,
             BigInteger paymentMotes,
             ulong ttl = 1800000)
@@ -159,8 +158,8 @@ namespace Casper.Network.SDK.Clients
                 "transfer_from",
                 new List<NamedArg>()
                 {
-                    new NamedArg("owner", CLValue.Key(new AccountHashKey(ownerPk))),
-                    new NamedArg("recipient", CLValue.Key(new AccountHashKey(recipientPk))),
+                    new NamedArg("owner", CLValue.Key(ownerKey)),
+                    new NamedArg("recipient", CLValue.Key(recipientKey)),
                     new NamedArg("amount", CLValue.U256(amount))
                 },
                 spenderPK,
@@ -172,10 +171,9 @@ namespace Casper.Network.SDK.Clients
             return new DeployHelper(deploy, CasperClient);
         }
 
-        public async Task<BigInteger> GetBalance(PublicKey ownerPK)
+        public async Task<BigInteger> GetBalance(GlobalStateKey ownerKey)
         {
-            var accountHash = new AccountHashKey(ownerPK);
-            var dictItem = Convert.ToBase64String(accountHash.GetBytes());
+            var dictItem = Convert.ToBase64String(ownerKey.GetBytes());
 
             var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
                 "balances", dictItem);
@@ -183,14 +181,12 @@ namespace Casper.Network.SDK.Clients
             return result.StoredValue.CLValue.ToBigInteger();
         }
 
-        public async Task<BigInteger> GetAllowance(PublicKey ownerPK, PublicKey spenderPK)
+        public async Task<BigInteger> GetAllowance(GlobalStateKey ownerKey, GlobalStateKey spenderKey)
         {
-            var ownerAccHash = new AccountHashKey(ownerPK);
-            var spenderAccHash = new AccountHashKey(spenderPK);
-            var bytes = new byte[ownerAccHash.GetBytes().Length + spenderAccHash.GetBytes().Length];
-            Array.Copy(ownerAccHash.GetBytes(), 0, bytes, 0, ownerAccHash.GetBytes().Length);
-            Array.Copy(spenderAccHash.GetBytes(), 0, bytes, ownerAccHash.GetBytes().Length,
-                spenderAccHash.GetBytes().Length);
+            var bytes = new byte[ownerKey.GetBytes().Length + spenderKey.GetBytes().Length];
+            Array.Copy(ownerKey.GetBytes(), 0, bytes, 0, ownerKey.GetBytes().Length);
+            Array.Copy(spenderKey.GetBytes(), 0, bytes, ownerKey.GetBytes().Length,
+                spenderKey.GetBytes().Length);
 
             var bcBl2bdigest = new Org.BouncyCastle.Crypto.Digests.Blake2bDigest(256);
             bcBl2bdigest.BlockUpdate(bytes, 0, bytes.Length);
