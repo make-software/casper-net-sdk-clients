@@ -3,20 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
+using Casper.Network.SDK.JsonRpc;
 using Casper.Network.SDK.Types;
 using Casper.Network.SDK.Utils;
 using Org.BouncyCastle.Utilities.Encoders;
 
 namespace Casper.Network.SDK.Clients
 {
-    public enum ERC20ClientErrors
-    {
-        InvalidContext = UInt16.MaxValue,
-        InsufficientBalance = UInt16.MaxValue - 1,
-        InsufficientAllowance = UInt16.MaxValue - 2,
-        Overflow = UInt16.MaxValue - 3
-    }
-
     public class ERC20Client : ClientBase, IERC20Client
     {
         public string Name { get; private set; }
@@ -32,24 +25,7 @@ namespace Casper.Network.SDK.Clients
         {
         }
 
-        public async Task<bool> SetContractHash(PublicKey publicKey, string namedKey)
-        {
-            var response = await CasperClient.GetAccountInfo(publicKey);
-            var result = response.Parse();
-            var nk = result.Account.NamedKeys.FirstOrDefault(k => k.Name == namedKey);
-            if (nk != null)
-                return await SetContractHash(nk.Key);
-
-            throw new Exception($"Named key '{namedKey}' not found.");
-        }
-
-        public async Task<bool> SetContractHash(string contractHash)
-        {
-            var key = GlobalStateKey.FromString(contractHash);
-            return await SetContractHash(key);
-        }
-
-        public async Task<bool> SetContractHash(GlobalStateKey contractHash)
+        public override async Task<bool> SetContractHash(GlobalStateKey contractHash)
         {
             ContractHash = contractHash as HashKey;
 
@@ -103,12 +79,42 @@ namespace Casper.Network.SDK.Clients
             return new DeployHelper(deploy, CasperClient);
         }
 
+        private void _isValidKey(GlobalStateKey key)
+        {
+            if (key is not AccountHashKey && key is not HashKey)
+                throw new ContractException("Only AccountHash or Hash keys are allowed.", (long)ERC20ClientErrors.AccountNotValid);
+        }
+        
+        private ProcessDeployResult _processDeployResult = result =>
+        {
+            var executionResult = result.ExecutionResults.FirstOrDefault();
+            if (executionResult is null)
+                throw new ContractException("ExecutionResults null for processed deploy.",
+                    (long)ERC20ClientErrors.GenericError);
+                
+            if (executionResult.IsSuccess)
+                return;
+                
+            if (executionResult.ErrorMessage.Contains(((UInt16) ERC20ClientErrors.InsufficientBalance).ToString()))
+                throw new ContractException("Deploy not executed. Insufficient balance.",
+                    (long) ERC20ClientErrors.InsufficientBalance);
+                
+            if (executionResult.ErrorMessage.Contains(((UInt16) ERC20ClientErrors.InsufficientAllowance).ToString()))
+                throw new ContractException("Deploy not executed. Insufficient allowance.",
+                    (long) ERC20ClientErrors.InsufficientAllowance);
+
+            throw new ContractException("Deploy not executed. " + executionResult.ErrorMessage,
+                (long)ERC20ClientErrors.GenericError);
+        };
+        
         public DeployHelper TransferTokens(PublicKey ownerPK,
             GlobalStateKey recipientKey,
             BigInteger amount,
             BigInteger paymentMotes,
             ulong ttl = 1800000)
         {
+            _isValidKey(recipientKey);
+            
             var deploy = DeployTemplates.ContractCall(ContractHash,
                 "transfer",
                 new List<NamedArg>()
@@ -122,7 +128,7 @@ namespace Casper.Network.SDK.Clients
                 DEFAULT_GAS_PRICE,
                 ttl);
 
-            return new DeployHelper(deploy, CasperClient);
+            return new DeployHelper(deploy, CasperClient, _processDeployResult);
         }
 
         public DeployHelper ApproveSpender(PublicKey ownerPK,
@@ -131,6 +137,8 @@ namespace Casper.Network.SDK.Clients
             BigInteger paymentMotes,
             ulong ttl = 1800000)
         {
+            _isValidKey(spenderKey);
+            
             var deploy = DeployTemplates.ContractCall(ContractHash,
                 "approve",
                 new List<NamedArg>()
@@ -144,7 +152,7 @@ namespace Casper.Network.SDK.Clients
                 DEFAULT_GAS_PRICE,
                 ttl);
 
-            return new DeployHelper(deploy, CasperClient);
+            return new DeployHelper(deploy, CasperClient, _processDeployResult);
         }
 
         public DeployHelper TransferTokensFromOwner(PublicKey spenderPK,
@@ -154,6 +162,9 @@ namespace Casper.Network.SDK.Clients
             BigInteger paymentMotes,
             ulong ttl = 1800000)
         {
+            _isValidKey(ownerKey);
+            _isValidKey(recipientKey);
+            
             var deploy = DeployTemplates.ContractCall(ContractHash,
                 "transfer_from",
                 new List<NamedArg>()
@@ -168,21 +179,37 @@ namespace Casper.Network.SDK.Clients
                 DEFAULT_GAS_PRICE,
                 ttl);
 
-            return new DeployHelper(deploy, CasperClient);
+            return new DeployHelper(deploy, CasperClient, _processDeployResult);
         }
 
         public async Task<BigInteger> GetBalance(GlobalStateKey ownerKey)
         {
+            _isValidKey(ownerKey);
+            
             var dictItem = Convert.ToBase64String(ownerKey.GetBytes());
-
-            var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
-                "balances", dictItem);
-            var result = response.Parse();
-            return result.StoredValue.CLValue.ToBigInteger();
+            
+            try
+            {
+                var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
+                    "balances", dictItem);
+                var result = response.Parse();
+                return result.StoredValue.CLValue.ToBigInteger();
+            }
+            catch (RpcClientException e)
+            {
+                if (e.RpcError.Code == -32003)
+                    throw new ContractException("Account not found in the balances entries.",
+                        (long) ERC20ClientErrors.UnknownAccount, e);
+                
+                throw;
+            }
         }
 
         public async Task<BigInteger> GetAllowance(GlobalStateKey ownerKey, GlobalStateKey spenderKey)
         {
+            _isValidKey(ownerKey);
+            _isValidKey(spenderKey);
+            
             var bytes = new byte[ownerKey.GetBytes().Length + spenderKey.GetBytes().Length];
             Array.Copy(ownerKey.GetBytes(), 0, bytes, 0, ownerKey.GetBytes().Length);
             Array.Copy(spenderKey.GetBytes(), 0, bytes, ownerKey.GetBytes().Length,
@@ -195,10 +222,33 @@ namespace Casper.Network.SDK.Clients
 
             var dictItem = Hex.ToHexString(hash);
 
-            var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
-                "allowances", dictItem);
-            var result = response.Parse();
-            return result.StoredValue.CLValue.ToBigInteger();
+            try
+            {
+                var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
+                    "allowances", dictItem);
+                var result = response.Parse();
+                return result.StoredValue.CLValue.ToBigInteger();
+            }
+            catch (RpcClientException e)
+            {
+                if (e.RpcError.Code == -32003)
+                    throw new ContractException("Account not found in the allowances entries.",
+                        (long) ERC20ClientErrors.UnknownAccount, e);
+                
+                throw;
+            }
         }
+    }
+    
+    public enum ERC20ClientErrors
+    {
+        InvalidContext = UInt16.MaxValue,
+        InsufficientBalance = UInt16.MaxValue - 1,
+        InsufficientAllowance = UInt16.MaxValue - 2,
+        Overflow = UInt16.MaxValue - 3,
+        GenericError = UInt16.MaxValue - 100,
+        AccountNotValid = UInt16.MaxValue - 101,
+        UnknownAccount = UInt16.MaxValue - 102,
+        ContractNotFound = UInt16.MaxValue - 103
     }
 }

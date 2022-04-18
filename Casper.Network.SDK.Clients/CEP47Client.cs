@@ -3,38 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
-using Casper.Network.SDK.SSE;
+using Casper.Network.SDK.JsonRpc;
 using Casper.Network.SDK.Types;
 using Casper.Network.SDK.Utils;
 using Org.BouncyCastle.Utilities.Encoders;
 
 namespace Casper.Network.SDK.Clients
 {
-    public enum CEP47EventType
-    {
-        Unknown,
-        MintOne,
-        BurnOne,
-        Approve,
-        Transfer,
-        UpdateMetadata
-    }
-
-    public class CEP47Event
-    {
-        public CEP47EventType EventType { get; init; }
-        public string ContractPackageHash { get; init; }
-        public string DeployHash { get; init; }
-        public string TokenId { get; init; }
-        public string Owner { get; init; }
-        public string Spender { get; init; }
-        public string Sender { get; init; }
-        public string Recipient { get; init; }
-    }
-
-    public delegate void CEP47EventHandler(CEP47Event evt);
-
-    public class CEP47Client : ClientBase, ICEP47Client
+    public partial class CEP47Client : ClientBase, ICEP47Client
     {
         public string Name { get; private set; }
 
@@ -42,31 +18,12 @@ namespace Casper.Network.SDK.Clients
 
         public Dictionary<string, string> Meta { get; private set; }
 
-        public BigInteger TotalSupply { get; private set; }
-
         public CEP47Client(ICasperClient casperClient, string chainName)
             : base(casperClient, chainName)
         {
         }
 
-        public async Task<bool> SetContractHash(PublicKey publicKey, string namedKey)
-        {
-            var response = await CasperClient.GetAccountInfo(publicKey);
-            var result = response.Parse();
-            var nk = result.Account.NamedKeys.FirstOrDefault(k => k.Name == namedKey);
-            if (nk != null)
-                return await SetContractHash(nk.Key);
-
-            throw new Exception($"Named key '{namedKey}' not found.");
-        }
-
-        public async Task<bool> SetContractHash(string contractHash)
-        {
-            var key = GlobalStateKey.FromString(contractHash);
-            return await SetContractHash(key);
-        }
-
-        public async Task<bool> SetContractHash(GlobalStateKey contractHash)
+        public override async Task<bool> SetContractHash(GlobalStateKey contractHash)
         {
             ContractHash = contractHash as HashKey;
 
@@ -78,9 +35,6 @@ namespace Casper.Network.SDK.Clients
 
             result = await GetNamedKey<CLValue>("meta");
             Meta = result.ToDictionary<string, string>();
-
-            result = await GetNamedKey<CLValue>("total_supply");
-            TotalSupply = result.ToBigInteger();
 
             return true;
         }
@@ -120,17 +74,53 @@ namespace Casper.Network.SDK.Clients
 
             var deploy = new Deploy(header, payment, session);
 
-            return new DeployHelper(deploy, CasperClient);
+            return new DeployHelper(deploy, CasperClient, _processDeployResult);
+        }
+
+        private ProcessDeployResult _processDeployResult = result =>
+        {
+            var executionResult = result.ExecutionResults.FirstOrDefault();
+            if (executionResult is null)
+                throw new ContractException("ExecutionResults null for processed deploy.",
+                    (long) ERC20ClientErrors.GenericError);
+
+            if (executionResult.IsSuccess)
+                return;
+
+            if (executionResult.ErrorMessage.Contains("User error: 1"))
+                throw new ContractException("Deploy not executed. Permission denied",
+                    (long) CEP47ClientErrors.PermissionDenied);
+
+            if (executionResult.ErrorMessage.Contains("User error: 2"))
+                throw new ContractException("Deploy not executed. Wrong arguments",
+                    (long) CEP47ClientErrors.WrongArguments);
+
+            if (executionResult.ErrorMessage.Contains("User error: 3"))
+                throw new ContractException("Deploy not executed. Token Id already exists",
+                    (long) CEP47ClientErrors.TokenIdAlreadyExists);
+
+            if (executionResult.ErrorMessage.Contains("User error: 4"))
+                throw new ContractException("Deploy not executed. Token Id doesn't exist",
+                    (long) CEP47ClientErrors.TokenIdDoesntExist);
+
+            throw new ContractException("Deploy not executed. " + executionResult.ErrorMessage,
+                (long) CEP47ClientErrors.GenericError);
+        };
+
+        public async Task<BigInteger> GetTotalSupply()
+        {
+            var result = await GetNamedKey<CLValue>("total_supply");
+            return result.ToBigInteger();
         }
 
         public DeployHelper MintOne(PublicKey senderPk,
-            PublicKey recipientPk,
+            GlobalStateKey recipientKey,
             BigInteger tokenId,
             Dictionary<string, string> meta,
             BigInteger paymentMotes,
             ulong ttl = 1800000)
         {
-            return MintMany(senderPk, recipientPk,
+            return MintMany(senderPk, recipientKey,
                 new List<BigInteger>() {tokenId},
                 new List<Dictionary<string, string>>() {meta},
                 paymentMotes,
@@ -138,7 +128,7 @@ namespace Casper.Network.SDK.Clients
         }
 
         public DeployHelper MintMany(PublicKey senderPk,
-            PublicKey recipientPk,
+            GlobalStateKey recipientKey,
             List<BigInteger> tokenIds,
             List<Dictionary<string, string>> metas,
             BigInteger paymentMotes,
@@ -162,7 +152,7 @@ namespace Casper.Network.SDK.Clients
                 "mint",
                 new List<NamedArg>()
                 {
-                    new NamedArg("recipient", CLValue.Key(new AccountHashKey(recipientPk))),
+                    new NamedArg("recipient", CLValue.Key(recipientKey)),
                     new NamedArg("token_ids", clTokenIds),
                     new NamedArg("token_metas", clMetas)
                 },
@@ -172,11 +162,11 @@ namespace Casper.Network.SDK.Clients
                 DEFAULT_GAS_PRICE,
                 ttl);
 
-            return new DeployHelper(deploy, CasperClient);
+            return new DeployHelper(deploy, CasperClient, _processDeployResult);
         }
 
         public DeployHelper MintCopies(PublicKey ownerPK,
-            PublicKey recipientPk,
+            GlobalStateKey recipientKey,
             List<BigInteger> tokenIds,
             Dictionary<string, string> meta,
             BigInteger paymentMotes,
@@ -192,7 +182,7 @@ namespace Casper.Network.SDK.Clients
                 "mint_copies",
                 new List<NamedArg>()
                 {
-                    new NamedArg("recipient", CLValue.Key(new AccountHashKey(recipientPk))),
+                    new NamedArg("recipient", CLValue.Key(recipientKey)),
                     new NamedArg("token_ids", clTokenIds),
                     new NamedArg("token_meta", CLValue.Map(dict)),
                     new NamedArg("count", (uint) tokenIds.Count),
@@ -203,11 +193,11 @@ namespace Casper.Network.SDK.Clients
                 DEFAULT_GAS_PRICE,
                 ttl);
 
-            return new DeployHelper(deploy, CasperClient);
+            return new DeployHelper(deploy, CasperClient, _processDeployResult);
         }
 
         public DeployHelper TransferToken(PublicKey ownerPk,
-            PublicKey recipientPk,
+            GlobalStateKey recipientKey,
             List<BigInteger> tokenIds,
             BigInteger paymentMotes,
             ulong ttl = 1800000)
@@ -218,7 +208,7 @@ namespace Casper.Network.SDK.Clients
                 "transfer",
                 new List<NamedArg>()
                 {
-                    new NamedArg("recipient", CLValue.Key(new AccountHashKey(recipientPk))),
+                    new NamedArg("recipient", CLValue.Key(recipientKey)),
                     new NamedArg("token_ids", clTokenIds),
                 },
                 ownerPk,
@@ -227,11 +217,11 @@ namespace Casper.Network.SDK.Clients
                 DEFAULT_GAS_PRICE,
                 ttl);
 
-            return new DeployHelper(deploy, CasperClient);
+            return new DeployHelper(deploy, CasperClient, _processDeployResult);
         }
 
         public DeployHelper Approve(PublicKey ownerPk,
-            PublicKey spenderPk,
+            GlobalStateKey spenderKey,
             List<BigInteger> tokenIds,
             BigInteger paymentMotes,
             ulong ttl = 1800000)
@@ -242,7 +232,7 @@ namespace Casper.Network.SDK.Clients
                 "approve",
                 new List<NamedArg>()
                 {
-                    new NamedArg("spender", CLValue.Key(new AccountHashKey(spenderPk))),
+                    new NamedArg("spender", CLValue.Key(spenderKey)),
                     new NamedArg("token_ids", clTokenIds),
                 },
                 ownerPk,
@@ -251,12 +241,12 @@ namespace Casper.Network.SDK.Clients
                 DEFAULT_GAS_PRICE,
                 ttl);
 
-            return new DeployHelper(deploy, CasperClient);
+            return new DeployHelper(deploy, CasperClient, _processDeployResult);
         }
 
-        public DeployHelper TransferTokenFrom(PublicKey senderPk,
-            PublicKey ownerPk,
-            PublicKey recipientPk,
+        public DeployHelper TransferTokenFrom(PublicKey spenderPk,
+            GlobalStateKey ownerKey,
+            GlobalStateKey recipientKey,
             List<BigInteger> tokenIds,
             BigInteger paymentMotes,
             ulong ttl = 1800000)
@@ -267,25 +257,23 @@ namespace Casper.Network.SDK.Clients
                 "transfer_from",
                 new List<NamedArg>()
                 {
-                    new NamedArg("sender", CLValue.Key(new AccountHashKey(ownerPk))),
-                    new NamedArg("recipient", CLValue.Key(new AccountHashKey(recipientPk))),
+                    new NamedArg("sender", CLValue.Key(ownerKey)),
+                    new NamedArg("recipient", CLValue.Key(recipientKey)),
                     new NamedArg("token_ids", clTokenIds),
                 },
-                senderPk,
+                spenderPk,
                 paymentMotes,
                 ChainName,
                 DEFAULT_GAS_PRICE,
                 ttl);
 
-            return new DeployHelper(deploy, CasperClient);
+            return new DeployHelper(deploy, CasperClient, _processDeployResult);
         }
 
-        private string key_and_value_to_str(PublicKey key, BigInteger value)
+        private string key_and_value_to_str(GlobalStateKey key, BigInteger value)
         {
-            var ownerAccHash = new AccountHashKey(key);
-
             var bcBl2bdigest = new Org.BouncyCastle.Crypto.Digests.Blake2bDigest(256);
-            bcBl2bdigest.BlockUpdate(ownerAccHash.GetBytes(), 0, ownerAccHash.GetBytes().Length);
+            bcBl2bdigest.BlockUpdate(key.GetBytes(), 0, key.GetBytes().Length);
 
             var bytes = value == BigInteger.Zero ? new byte[] {0x00} : CLValue.U256(value).Bytes;
             bcBl2bdigest.BlockUpdate(bytes, 0, bytes.Length);
@@ -296,68 +284,108 @@ namespace Casper.Network.SDK.Clients
             return Hex.ToHexString(hash);
         }
 
-        public async Task<BigInteger?> GetTokenIdByIndex(PublicKey owner, uint index)
+        public async Task<BigInteger?> GetTokenIdByIndex(GlobalStateKey ownerKey, uint index)
         {
-            var dictItem = key_and_value_to_str(owner, new BigInteger(index));
+            try
+            {
+                var dictItem = key_and_value_to_str(ownerKey, new BigInteger(index));
 
-            var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
-                "owned_tokens_by_index", dictItem);
-            var result = response.Parse();
-            var option = result.StoredValue.CLValue;
-            if (option != null && option.Some(out BigInteger tokenId))
-                return tokenId;
+                var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
+                    "owned_tokens_by_index", dictItem);
+                var result = response.Parse();
+                var option = result.StoredValue.CLValue;
+                if (option != null && option.Some(out BigInteger tokenId))
+                    return tokenId;
+            }
+            catch (RpcClientException e)
+            {
+                if (e.RpcError.Code == -32003)
+                    throw new ContractException("Token index not found in the owned_tokens_by_index entries.",
+                        (long) CEP47ClientErrors.TokenIdDoesntExist, e);
+
+                throw;
+            }
 
             return null;
         }
 
         public async Task<Dictionary<string, string>> GetTokenMetadata(BigInteger tokenId)
         {
-            var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
-                "metadata", tokenId.ToString());
-            var result = response.Parse();
+            try
+            {
+                var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
+                    "metadata", tokenId.ToString());
+                var result = response.Parse();
 
-            var option = result.StoredValue.CLValue;
-            if (option != null && option.Some(out Dictionary<string, string> metadata))
-                return metadata;
+                var option = result.StoredValue.CLValue;
+                if (option != null && option.Some(out Dictionary<string, string> metadata))
+                    return metadata;
+            }
+            catch (RpcClientException e)
+            {
+                if (e.RpcError.Code == -32003)
+                    throw new ContractException("Token not found in the metadata entries.",
+                        (long) CEP47ClientErrors.TokenIdDoesntExist, e);
+
+                throw;
+            }
 
             return null;
         }
 
         public async Task<GlobalStateKey> GetOwnerOf(BigInteger tokenId)
         {
-            var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
-                "owners", tokenId.ToString());
-            var result = response.Parse();
+            try
+            {
+                var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
+                    "owners", tokenId.ToString());
+                var result = response.Parse();
 
-            var option = result.StoredValue.CLValue;
-            if (option != null && option.Some(out GlobalStateKey ownerAccount))
-                return ownerAccount;
+                var option = result.StoredValue.CLValue;
+                if (option != null && option.Some(out GlobalStateKey ownerAccount))
+                    return ownerAccount;
+            }
+            catch (RpcClientException e)
+            {
+                if (e.RpcError.Code == -32003)
+                    throw new ContractException("Token not found in the owners entries.",
+                        (long) CEP47ClientErrors.TokenIdDoesntExist, e);
 
-            return null;
-        }
-
-        public async Task<BigInteger?> GetBalanceOf(PublicKey owner)
-        {
-            var ownerAccHash = new AccountHashKey(owner);
-
-            var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
-                "balances", ownerAccHash.ToHexString().ToLower());
-            var result = response.Parse();
-
-            var option = result.StoredValue.CLValue;
-
-            if (option != null && option.Some(out BigInteger tokenId))
-                return tokenId;
+                throw;
+            }
 
             return null;
         }
 
-        public async Task<GlobalStateKey> GetApprovedSpender(PublicKey owner, BigInteger tokenId)
+        public async Task<BigInteger?> GetBalanceOf(GlobalStateKey ownerKey)
         {
-            var ownerAccHash = new AccountHashKey(owner);
+            try
+            {
+                var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
+                    "balances", ownerKey.ToHexString().ToLower());
+                var result = response.Parse();
 
+                var option = result.StoredValue.CLValue;
+
+                if (option != null && option.Some(out BigInteger tokenId))
+                    return tokenId;
+            }
+            catch (RpcClientException e)
+            {
+                if (e.RpcError.Code == -32003)
+                    throw new ContractException("Account not found in the balances entries.",
+                        (long) CEP47ClientErrors.UnknownAccount, e);
+
+                throw;
+            }
+            
+            return null;
+        }
+
+        public async Task<GlobalStateKey> GetApprovedSpender(GlobalStateKey ownerKey, BigInteger tokenId)
+        {
             var bcBl2bdigest = new Org.BouncyCastle.Crypto.Digests.Blake2bDigest(256);
-            bcBl2bdigest.BlockUpdate(ownerAccHash.GetBytes(), 0, ownerAccHash.GetBytes().Length);
+            bcBl2bdigest.BlockUpdate(ownerKey.GetBytes(), 0, ownerKey.GetBytes().Length);
 
             var bytes = CLValue.String(tokenId.ToString()).Bytes;
             bcBl2bdigest.BlockUpdate(bytes, 0, bytes.Length);
@@ -365,14 +393,25 @@ namespace Casper.Network.SDK.Clients
             var hash = new byte[bcBl2bdigest.GetDigestSize()];
             bcBl2bdigest.DoFinal(hash, 0);
 
-            var dictItem = Hex.ToHexString(hash);
+            try
+            {
+                var dictItem = Hex.ToHexString(hash);
 
-            var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
-                "allowances", dictItem);
-            var result = response.Parse();
-            var option = result.StoredValue.CLValue;
-            if (option != null && option.Some(out GlobalStateKey spender))
-                return spender;
+                var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
+                    "allowances", dictItem);
+                var result = response.Parse();
+                var option = result.StoredValue.CLValue;
+                if (option != null && option.Some(out GlobalStateKey spender))
+                    return spender;
+            }
+            catch (RpcClientException e)
+            {
+                if (e.RpcError.Code == -32003)
+                    throw new ContractException("Token not found in the allowances entries.",
+                        (long) CEP47ClientErrors.TokenIdDoesntExist, e);
+
+                throw;
+            }
 
             return null;
         }
@@ -400,26 +439,24 @@ namespace Casper.Network.SDK.Clients
                 DEFAULT_GAS_PRICE,
                 ttl);
 
-            return new DeployHelper(deploy, CasperClient);
+            return new DeployHelper(deploy, CasperClient, _processDeployResult);
         }
 
         public DeployHelper BurnOne(PublicKey senderPk,
-            PublicKey ownerPk,
+            GlobalStateKey ownerKey,
             BigInteger tokenId,
             BigInteger paymentMotes,
             ulong ttl = 1800000)
         {
-            var clTokenIds = CLValue.List(new[] {CLValue.U256(tokenId)});
-
             return BurnMany(senderPk,
-                ownerPk,
+                ownerKey,
                 new List<BigInteger>() {tokenId},
                 paymentMotes,
                 ttl);
         }
 
         public DeployHelper BurnMany(PublicKey senderPk,
-            PublicKey ownerPk,
+            GlobalStateKey ownerKey,
             List<BigInteger> tokenIds,
             BigInteger paymentMotes,
             ulong ttl = 1800000)
@@ -432,7 +469,7 @@ namespace Casper.Network.SDK.Clients
                 "burn",
                 new List<NamedArg>()
                 {
-                    new NamedArg("owner", CLValue.Key(new AccountHashKey(ownerPk))),
+                    new NamedArg("owner", CLValue.Key(ownerKey)),
                     new NamedArg("token_ids", clTokenIds)
                 },
                 senderPk,
@@ -441,90 +478,17 @@ namespace Casper.Network.SDK.Clients
                 DEFAULT_GAS_PRICE,
                 ttl);
 
-            return new DeployHelper(deploy, CasperClient);
+            return new DeployHelper(deploy, CasperClient, _processDeployResult);
         }
+    }
 
-        private GlobalStateKey _contractPackageHash;
-
-        public event CEP47EventHandler OnCEP47Event;
-
-        private ServerEventsClient _sse;
-
-        public async Task ListenToEvents()
-        {
-            var localNetHost = "127.0.0.1";
-            var localNetPort = 18101;
-            _sse = new ServerEventsClient(localNetHost, localNetPort);
-
-            var rpcResponse = await CasperClient.QueryGlobalState(ContractHash);
-            var result = rpcResponse.Parse();
-
-            _contractPackageHash = GlobalStateKey.FromString(
-                result.StoredValue.Contract.ContractPackageHash);
-
-            _sse.AddEventCallback(EventType.DeployProcessed, "catch-all-cb",
-                this.ProcessEvent);
-            _sse.StartListening();
-        }
-
-        private void TriggerEvent(IDictionary<string, string> map, DeployProcessed deploy)
-        {
-            CEP47Event evt = new CEP47Event
-            {
-                EventType = map["event_type"] switch
-                {
-                    "cep47_mint_one" => CEP47EventType.MintOne,
-                    "cep47_burn_one" => CEP47EventType.BurnOne,
-                    "cep47_approve_token" => CEP47EventType.Approve,
-                    "cep47_transfer_token" => CEP47EventType.Transfer,
-                    "cep47_metadata_update" => CEP47EventType.UpdateMetadata,
-                    _ => CEP47EventType.Unknown
-                },
-                TokenId = map.ContainsKey("token_id") ? map["token_id"] : null,
-                Owner = map.ContainsKey("owner") ? map["owner"] : null,
-                Spender = map.ContainsKey("spender") ? map["spender"] : null,
-                Sender = map.ContainsKey("sender") ? map["sender"] : null,
-                Recipient = map.ContainsKey("recipient") ? map["recipient"] : null,
-                ContractPackageHash = _contractPackageHash.ToHexString(),
-                DeployHash = deploy.DeployHash
-            };
-
-            OnCEP47Event?.Invoke(evt);
-        }
-
-        private void ProcessEvent(SSEvent evt)
-        {
-            try
-            {
-                if (evt.EventType == EventType.DeployProcessed)
-                {
-                    var deploy = evt.Parse<DeployProcessed>();
-                    if (!deploy.ExecutionResult.IsSuccess)
-                        return;
-
-                    var maybeEvents = deploy.ExecutionResult.Effect.Transforms.Where(
-                        tr => tr.Type == TransformType.WriteCLValue && tr.Key is URef);
-
-                    foreach (var maybeEvt in maybeEvents)
-                    {
-                        var clValue = maybeEvt.Value as CLValue;
-                        if (clValue?.TypeInfo is CLMapTypeInfo clMapTypeInfo &&
-                            clMapTypeInfo.KeyType.Type is CLType.String &&
-                            clMapTypeInfo.ValueType.Type is CLType.String)
-                        {
-                            var map = clValue.ToDictionary<string, string>();
-                            if (map.ContainsKey("contract_package_hash") &&
-                                map["contract_package_hash"] == _contractPackageHash.ToHexString().ToLower())
-                            {
-                                TriggerEvent(map, deploy);
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-            }
-        }
+    public enum CEP47ClientErrors
+    {
+        GenericError = 0,
+        PermissionDenied = 1,
+        WrongArguments = 2,
+        TokenIdAlreadyExists = 3,
+        TokenIdDoesntExist = 4,
+        UnknownAccount = 100
     }
 }

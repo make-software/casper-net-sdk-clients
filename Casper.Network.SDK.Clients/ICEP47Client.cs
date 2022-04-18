@@ -13,8 +13,6 @@ namespace Casper.Network.SDK.Clients
 
         Dictionary<string, string> Meta { get; }
 
-        BigInteger TotalSupply { get; }
-
         Task<bool> SetContractHash(PublicKey publicKey, string namedKey);
 
         Task<bool> SetContractHash(string contractHash);
@@ -30,55 +28,57 @@ namespace Casper.Network.SDK.Clients
             BigInteger paymentMotes,
             ulong ttl = 1800000);
 
+        Task<BigInteger> GetTotalSupply();
+        
         DeployHelper MintOne(PublicKey senderPk,
-            PublicKey recipientPk,
+            GlobalStateKey recipientKey,
             BigInteger tokenId,
             Dictionary<string, string> meta,
             BigInteger paymentMotes,
             ulong ttl = 1800000);
 
         DeployHelper MintMany(PublicKey senderPk,
-            PublicKey recipientPk,
+            GlobalStateKey recipientKey,
             List<BigInteger> tokenIds,
             List<Dictionary<string, string>> metas,
             BigInteger paymentMotes,
             ulong ttl = 1800000);
 
         DeployHelper MintCopies(PublicKey ownerPK,
-            PublicKey recipientPk,
+            GlobalStateKey recipientKey,
             List<BigInteger> tokenIds,
             Dictionary<string, string> meta,
             BigInteger paymentMotes,
             ulong ttl = 1800000);
 
         DeployHelper TransferToken(PublicKey ownerPk,
-            PublicKey recipientPk,
+            GlobalStateKey recipientKey,
             List<BigInteger> tokenIds,
             BigInteger paymentMotes,
             ulong ttl = 1800000);
 
         DeployHelper Approve(PublicKey ownerPk,
-            PublicKey spenderPk,
+            GlobalStateKey spenderKey,
             List<BigInteger> tokenIds,
             BigInteger paymentMotes,
             ulong ttl = 1800000);
 
         DeployHelper TransferTokenFrom(PublicKey senderPk,
-            PublicKey ownerPk,
-            PublicKey recipientPk,
+            GlobalStateKey ownerKey,
+            GlobalStateKey recipientKey,
             List<BigInteger> tokenIds,
             BigInteger paymentMotes,
             ulong ttl = 1800000);
 
-        Task<BigInteger?> GetTokenIdByIndex(PublicKey owner, uint index);
+        Task<BigInteger?> GetTokenIdByIndex(GlobalStateKey ownerKey, uint index);
 
         Task<Dictionary<string, string>> GetTokenMetadata(BigInteger tokenId);
 
         Task<GlobalStateKey> GetOwnerOf(BigInteger tokenId);
 
-        Task<BigInteger?> GetBalanceOf(PublicKey owner);
+        Task<BigInteger?> GetBalanceOf(GlobalStateKey ownerKey);
 
-        Task<GlobalStateKey> GetApprovedSpender(PublicKey owner, BigInteger tokenId);
+        Task<GlobalStateKey> GetApprovedSpender(GlobalStateKey ownerKey, BigInteger tokenId);
 
         DeployHelper UpdateTokenMetadata(PublicKey senderPk,
             BigInteger tokenId,
@@ -87,13 +87,13 @@ namespace Casper.Network.SDK.Clients
             ulong ttl = 1800000);
 
         DeployHelper BurnOne(PublicKey senderPk,
-            PublicKey ownerPk,
+            GlobalStateKey ownerKey,
             BigInteger tokenId,
             BigInteger paymentMotes,
             ulong ttl = 1800000);
 
         DeployHelper BurnMany(PublicKey senderPk,
-            PublicKey ownerPk,
+            GlobalStateKey ownerKey,
             List<BigInteger> tokenIds,
             BigInteger paymentMotes,
             ulong ttl = 1800000);

@@ -100,7 +100,11 @@ namespace Casper.Network.SDK.Clients.Test
 
             var b = await _erc20Client.SetContractHash(_ownerAccount.PublicKey, "erc20_token_contract");
             Assert.IsTrue(b);
-            Assert.AreEqual(_contractHash.ToString(), _erc20Client.ContractHash.ToString());
+
+            if (_contractHash != null)
+                Assert.AreEqual(_contractHash.ToString(), _erc20Client.ContractHash.ToString());
+            else
+                _contractHash = _erc20Client.ContractHash;
         }
         
         [Test, Order(2)]
@@ -108,7 +112,7 @@ namespace Casper.Network.SDK.Clients.Test
         {
             // catch error for wrong named key
             //
-            var ex = Assert.ThrowsAsync<Exception>(async () =>
+            var ex = Assert.CatchAsync<Exception>(async () =>
                 await _erc20Client.SetContractHash(_ownerAccount.PublicKey, "wrong_named_key"));
             Assert.IsNotNull(ex);
             Assert.AreEqual("Named key 'wrong_named_key' not found.", ex.Message);
@@ -196,7 +200,7 @@ namespace Casper.Network.SDK.Clients.Test
             var deployHelper = _erc20Client.TransferTokensFromOwner(_user1Account.PublicKey,
                _ownerAccountKey,
                 _contractHash,
-                100_000, 
+                300_000, 
                 1_000_000_000);
             
             Assert.IsNotNull(deployHelper);
@@ -218,46 +222,37 @@ namespace Casper.Network.SDK.Clients.Test
         {
             var allowanceOfUser1 = await _erc20Client.GetAllowance(_ownerAccountKey,
                 _user1AccountKey);
-            Assert.AreEqual((BigInteger)400_000, allowanceOfUser1);
+            Assert.AreEqual((BigInteger)200_000, allowanceOfUser1);
             
             var balanceOfUser2 = await _erc20Client.GetBalance(_user2AccountKey);
             Assert.AreEqual((BigInteger)10_000, balanceOfUser2);
             
             var balanceOfContract = await _erc20Client.GetBalance(_contractHash);
-            Assert.AreEqual((BigInteger)100_000, balanceOfContract);
+            Assert.AreEqual((BigInteger)300_000, balanceOfContract);
             
             var balanceOfOwner = await _erc20Client.GetBalance(_ownerAccountKey);
             Assert.AreEqual(BigInteger.Parse(TOKEN_SUPPLY), balanceOfOwner+balanceOfUser2+balanceOfContract);
-            
-            // catch errors for not existing allowances
-            //
-            var ex = Assert.ThrowsAsync<RpcClientException>(async () =>
-                await _erc20Client.GetAllowance(_ownerAccountKey, 
-                    _user2AccountKey));
-            Assert.IsNotNull(ex);
-            Assert.IsTrue(ex.Message.Contains("Code: -32003"));
-            
         }
 
-        [Test, Order(3)]
+        [Test, Order(7)]
         public void CatchAccountBalanceNotFoundTest()
         {
-            var ex = Assert.ThrowsAsync<RpcClientException>(async () =>
+            var ex = Assert.CatchAsync<ContractException>(async () =>
                 await _erc20Client.GetBalance(_user1AccountKey));
             Assert.IsNotNull(ex);
-            Assert.AreEqual(-32003, ex.RpcError.Code);
+            Assert.AreEqual((int)ERC20ClientErrors.UnknownAccount, ex.Code);
         }
         
-        [Test, Order(3)]
+        [Test, Order(7)]
         public void CatchAllowanceNotFoundTest()
         {
-            var ex = Assert.ThrowsAsync<RpcClientException>(async () =>
+            var ex = Assert.CatchAsync<ContractException>(async () =>
                 await _erc20Client.GetAllowance(_ownerAccountKey, _user2AccountKey));
             Assert.IsNotNull(ex);
-            Assert.AreEqual(-32003, ex.RpcError.Code);
+            Assert.AreEqual((int)ERC20ClientErrors.UnknownAccount, ex.Code);
         }
         
-        [Test, Order(4)]
+        [Test, Order(7)]
         public async Task CatchInsufficientBalanceTest()
         {
             Assert.IsNotNull(_erc20Client, "This test must run after SetContractHashTest");
@@ -274,12 +269,55 @@ namespace Casper.Network.SDK.Clients.Test
 
             await deployHelper.PutDeploy();
 
-            await deployHelper.WaitDeployProcess();
+            var ex = Assert.CatchAsync<ContractException>(async () =>
+                await deployHelper.WaitDeployProcess());
+            Assert.IsNotNull(ex);
+            Assert.AreEqual((long)ERC20ClientErrors.InsufficientBalance, ex.Code);
+        }
+
+        [Test, Order(7)]
+        public async Task CatchUnknownAccountTest()
+        {
+            Assert.IsNotNull(_erc20Client, "This test must run after SetContractHashTest");
+
+            var deployHelper = _erc20Client.TransferTokens(_user1Account.PublicKey,
+                _user2AccountKey,
+                300_000,
+                1_000_000_000);
             
-            Assert.IsFalse(deployHelper.IsSuccess);
-            Assert.IsNotNull(deployHelper.ExecutionResult);
-            Assert.IsTrue(deployHelper.ExecutionResult.Cost > 0);
-            Assert.IsTrue(deployHelper.ExecutionResult.ErrorMessage.Contains(((UInt16)ERC20ClientErrors.InsufficientBalance).ToString()));
+            Assert.IsNotNull(deployHelper);
+            Assert.IsNotNull(deployHelper.Deploy);
+            
+            deployHelper.Sign(_user1Account);
+
+            await deployHelper.PutDeploy();
+
+            var ex = Assert.CatchAsync<ContractException>(async () => await deployHelper.WaitDeployProcess());
+
+            Assert.IsNotNull(ex);
+            Assert.AreEqual((long)ERC20ClientErrors.InsufficientBalance, ex.Code);
+        }
+        
+        [Test, Order(7)]
+        public async Task CatchTransferFromInsufficientAllowanceTest()
+        {
+            var deployHelper = _erc20Client.TransferTokensFromOwner(_user1Account.PublicKey,
+                _ownerAccountKey,
+                _contractHash,
+                300_000, 
+                1_000_000_000);
+            
+            Assert.IsNotNull(deployHelper);
+            Assert.IsNotNull(deployHelper.Deploy);
+            
+            deployHelper.Sign(_user1Account);
+
+            await deployHelper.PutDeploy();
+
+            var ex = Assert.CatchAsync<ContractException>(async () => await deployHelper.WaitDeployProcess());
+
+            Assert.IsNotNull(ex);
+            Assert.AreEqual((long)ERC20ClientErrors.InsufficientAllowance, ex.Code);
         }
     }
 }

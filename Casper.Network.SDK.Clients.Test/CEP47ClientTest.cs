@@ -6,18 +6,23 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
+using Casper.Network.SDK.SSE;
 
 namespace Casper.Network.SDK.Clients.Test
 {
     public class CEP47ClientTest
     {
+        private const string CHAIN_NAME = "casper-net-1";
         private string _nodeAddress;
-        private string _chainName = "casper-net-1";
         private string _cep47WasmFile;
 
         private KeyPair _ownerAccount;
         private KeyPair _user1Account;
         private KeyPair _user2Account;
+
+        private GlobalStateKey _ownerAccountKey;
+        private GlobalStateKey _user1AccountKey;
+        private GlobalStateKey _user2AccountKey;
 
         private HashKey _contractHash;
         private CEP47Client _cep47Client;
@@ -25,7 +30,7 @@ namespace Casper.Network.SDK.Clients.Test
         private const string TOKEN_NAME = "DragonsNFT";
         private const string TOKEN_SYMBOL = "DGNFT";
 
-        private List<CEP47Event> events;
+        private List<CEP47Event> _events;
 
         [OneTimeSetUp]
         public void Init()
@@ -42,25 +47,28 @@ namespace Casper.Network.SDK.Clients.Test
                              "/TestData/owneract.pem";
             _ownerAccount = KeyPair.FromPem(fkFilename);
             Assert.IsNotNull(_ownerAccount, $"Cannot read owner key from '{fkFilename}");
+            _ownerAccountKey = new AccountHashKey(_ownerAccount.PublicKey);
 
             var uk1Filename = TestContext.CurrentContext.TestDirectory +
                               "/TestData/user1act.pem";
             _user1Account = KeyPair.FromPem(uk1Filename);
             Assert.IsNotNull(_user1Account, $"Cannot read owner key from '{uk1Filename}");
+            _user1AccountKey = new AccountHashKey(_user1Account.PublicKey);
 
             var uk2Filename = TestContext.CurrentContext.TestDirectory +
                               "/TestData/user2act.pem";
             _user2Account = KeyPair.FromPem(uk2Filename);
             Assert.IsNotNull(_user2Account, $"Cannot read owner key from '{uk2Filename}");
+            _user2AccountKey = new AccountHashKey(_user2Account.PublicKey);
         }
 
         [Test, Order(1)]
         public async Task InstallContractTest()
         {
-            var client = new CEP47Client(new NetCasperClient(_nodeAddress), _chainName);
+            var client = new CEP47Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
 
-            var wasmBytes = File.ReadAllBytes(TestContext.CurrentContext.TestDirectory +
-                                              "/TestData/" + _cep47WasmFile);
+            var wasmBytes = await File.ReadAllBytesAsync(TestContext.CurrentContext.TestDirectory +
+                                                         "/TestData/" + _cep47WasmFile);
 
             var meta = new Dictionary<string, string>
             {
@@ -94,7 +102,7 @@ namespace Casper.Network.SDK.Clients.Test
         [Test, Order(2)]
         public async Task SetContractHashFromPKTest()
         {
-            _cep47Client = new CEP47Client(new NetCasperClient(_nodeAddress), _chainName);
+            _cep47Client = new CEP47Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
 
             var b = await _cep47Client.SetContractHash(_ownerAccount.PublicKey, $"{TOKEN_NAME}_contract_hash");
             Assert.IsTrue(b);
@@ -102,19 +110,24 @@ namespace Casper.Network.SDK.Clients.Test
             if (_contractHash != null)
                 Assert.AreEqual(_contractHash.ToString(), _cep47Client.ContractHash.ToString());
 
-            events = new List<CEP47Event>();
-            _cep47Client.OnCEP47Event += evt => events.Add(evt);
-            await _cep47Client.ListenToEvents();
+            _events = new List<CEP47Event>();
+            _cep47Client.OnCEP47Event += evt => _events.Add(evt);
+            
+            var localNetHost = "127.0.0.1";
+            var localNetPort = 18101;
+            var sseClient = new ServerEventsClient(localNetHost, localNetPort);
+            
+            await _cep47Client.ListenToEvents(sseClient);
         }
         
         [Test, Order(2)]
         public void CatchSetContractHashWrongKeyTest()
         {
-            var client = new CEP47Client(new NetCasperClient(_nodeAddress), _chainName);
+            var client = new CEP47Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
 
             // catch error for wrong named key
             //
-            var ex = Assert.ThrowsAsync<Exception>(async () =>
+            var ex = Assert.CatchAsync<ContractException>(async () =>
                 await client.SetContractHash(_ownerAccount.PublicKey, "wrong_named_key"));
             Assert.IsNotNull(ex);
             Assert.AreEqual("Named key 'wrong_named_key' not found.", ex.Message);
@@ -124,14 +137,14 @@ namespace Casper.Network.SDK.Clients.Test
         public async Task SetContractHashTest()
         {
             Assert.IsNotNull(_contractHash, "This test must run after InstallContractTest");
-            var client = new CEP47Client(new NetCasperClient(_nodeAddress), _chainName);
+            var client = new CEP47Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
 
             var b = await client.SetContractHash(_contractHash.ToString());
             Assert.IsTrue(b);
 
             Assert.AreEqual(TOKEN_NAME, client.Name);
             Assert.AreEqual(TOKEN_SYMBOL, client.Symbol);
-            Assert.AreEqual(BigInteger.Zero, client.TotalSupply);
+            Assert.AreEqual(BigInteger.Zero, await client.GetTotalSupply());
 
             Assert.IsNotNull(client.Meta);
 
@@ -150,7 +163,7 @@ namespace Casper.Network.SDK.Clients.Test
             };
 
             var deployHelper = _cep47Client.MintOne(_ownerAccount.PublicKey,
-                _user2Account.PublicKey,
+                _user2AccountKey,
                 new BigInteger(1),
                 tokenMeta,
                 1_000_000_000);
@@ -167,13 +180,66 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.IsTrue(deployHelper.IsSuccess);
             Assert.IsNotNull(deployHelper.ExecutionResult);
             Assert.IsTrue(deployHelper.ExecutionResult.Cost > 0);
+            
+            deployHelper = _cep47Client.MintOne(_ownerAccount.PublicKey,
+                _user2AccountKey,
+                new BigInteger(1),
+                tokenMeta,
+                1_000_000_000);
+
+            Assert.IsNotNull(deployHelper);
+            Assert.IsNotNull(deployHelper.Deploy);
+
+            deployHelper.Sign(_ownerAccount);
+
+            await deployHelper.PutDeploy();
+
+            var ex = Assert.CatchAsync<ContractException>(async () => await deployHelper.WaitDeployProcess());
+            Assert.IsNotNull(ex);
+            Assert.AreEqual((long)CEP47ClientErrors.TokenIdAlreadyExists, ex.Code);
         }
 
         [Test, Order(4)]
+        public async Task CatchTokenIdAlreadyExistsTest()
+        {
+            Assert.IsNotNull(_cep47Client, "This test must run after SetContractHashTest");
+
+            var tokenMeta = new Dictionary<string, string>
+            {
+                {"color", "green"}
+            };
+
+            var deployHelper = _cep47Client.MintOne(_ownerAccount.PublicKey,
+                _user2AccountKey,
+                new BigInteger(1),
+                tokenMeta,
+                1_000_000_000);
+
+            Assert.IsNotNull(deployHelper);
+            Assert.IsNotNull(deployHelper.Deploy);
+
+            deployHelper.Sign(_ownerAccount);
+
+            await deployHelper.PutDeploy();
+
+            var ex = Assert.CatchAsync<ContractException>(async () =>
+                await deployHelper.WaitDeployProcess());
+            Assert.IsNotNull(ex);
+            Assert.AreEqual((long)CEP47ClientErrors.TokenIdAlreadyExists, ex.Code);
+        }
+        
+        [Test, Order(4)]
         public async Task GetTokenIdByIndexTest()
         {
-            var tokenId = await _cep47Client.GetTokenIdByIndex(_user2Account.PublicKey, 0);
+            var tokenId = await _cep47Client.GetTokenIdByIndex(_user2AccountKey, 0);
             Assert.AreEqual(BigInteger.One, tokenId);
+
+            // negative path test
+            //
+            var ex = Assert.CatchAsync<ContractException>(async () =>
+                await _cep47Client.GetTokenIdByIndex(_user2AccountKey, 100));
+            Assert.IsNotNull(ex);
+            Assert.AreEqual((long)CEP47ClientErrors.TokenIdDoesntExist, ex.Code);
         }
 
         [Test, Order(4)]
@@ -184,15 +250,30 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.IsNotNull(tokenMeta);
             Assert.AreEqual(1, tokenMeta.Keys.Count);
             Assert.AreEqual("green", tokenMeta["color"]);
+            
+            // negative path test
+            //
+            var ex = Assert.CatchAsync<ContractException>(async () =>
+                await _cep47Client.GetTokenMetadata(100));
+            Assert.IsNotNull(ex);
+            Assert.AreEqual((long)CEP47ClientErrors.TokenIdDoesntExist, ex.Code);
         }
 
         [Test, Order(4)]
         public async Task GetBalanceTest()
         {
-            var balanceOf = await _cep47Client.GetBalanceOf(_user2Account.PublicKey);
+            var balanceOf = await _cep47Client.GetBalanceOf(_user2AccountKey);
             Assert.AreEqual(BigInteger.One, balanceOf);
+            
+            // negative path test
+            //
+            var key = KeyPair.CreateNew(KeyAlgo.ED25519);
+            var ex = Assert.CatchAsync<ContractException>(async () =>
+                await _cep47Client.GetBalanceOf(new AccountHashKey(key.PublicKey)));
+            Assert.IsNotNull(ex);
+            Assert.AreEqual((long)CEP47ClientErrors.UnknownAccount, ex.Code);
         }
-        
+
         [Test, Order(5)]
         public async Task UpdateTokenMetadataTest()
         {
@@ -214,7 +295,7 @@ namespace Casper.Network.SDK.Clients.Test
             await deployHelper.PutDeploy();
 
             await deployHelper.WaitDeployProcess();
-
+            
             Assert.IsTrue(deployHelper.IsSuccess);
             Assert.IsNotNull(deployHelper.ExecutionResult);
             Assert.IsTrue(deployHelper.ExecutionResult.Cost > 0);
@@ -223,6 +304,32 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.AreEqual(2, tm.Keys.Count);
             Assert.AreEqual("lightgreen", tm["color"]);
             Assert.AreEqual("drako", tm["name"]);
+        }
+        
+        [Test, Order(5)]
+        public async Task CatchTokenIdDoesntExistTest()
+        {
+            var tokenMeta = new Dictionary<string, string>
+            {
+                {"color", "lightgreen"},
+                {"name", "drako"}
+            };
+            var deployHelper = _cep47Client.UpdateTokenMetadata(_user2Account.PublicKey,
+                new BigInteger(3),
+                tokenMeta,
+                1_000_000_000);
+
+            Assert.IsNotNull(deployHelper);
+            Assert.IsNotNull(deployHelper.Deploy);
+
+            deployHelper.Sign(_user2Account);
+
+            await deployHelper.PutDeploy();
+
+            var ex = Assert.CatchAsync<ContractException>(async () =>
+                await deployHelper.WaitDeployProcess());
+            Assert.IsNotNull(ex);
+            Assert.AreEqual((long)CEP47ClientErrors.TokenIdDoesntExist, ex.Code);
         }
 
         [Test, Order(5)]
@@ -238,7 +345,7 @@ namespace Casper.Network.SDK.Clients.Test
             };
 
             var deployHelper = _cep47Client.MintCopies(_ownerAccount.PublicKey,
-                _user2Account.PublicKey,
+                _user2AccountKey,
                 tokenIds,
                 tokenMeta,
                 3_000_000_000);
@@ -279,7 +386,7 @@ namespace Casper.Network.SDK.Clients.Test
             };
 
             var deployHelper = _cep47Client.MintMany(_ownerAccount.PublicKey,
-                _user1Account.PublicKey,
+                _user1AccountKey,
                 tokenIds,
                 tokenMetas,
                 30_000_000_000);
@@ -306,6 +413,13 @@ namespace Casper.Network.SDK.Clients.Test
         }
 
         [Test, Order(6)]
+        public async Task TotalSupplyTest()
+        {
+            var totalSupply = await _cep47Client.GetTotalSupply();
+            Assert.AreEqual(new BigInteger(7), totalSupply);
+        }
+        
+        [Test, Order(6)]
         public async Task GetOwnerOfTest()
         {
             var user2Acct = new AccountHashKey(_user2Account.PublicKey).ToString();
@@ -323,13 +437,20 @@ namespace Casper.Network.SDK.Clients.Test
                 var ownerAcct = await _cep47Client.GetOwnerOf(tokenId);
                 Assert.AreEqual(user1Acct, ownerAcct.ToString());
             }
+
+            // negative path test
+            //
+            var ex = Assert.CatchAsync<ContractException>(async () =>
+                await _cep47Client.GetOwnerOf(100));
+            Assert.IsNotNull(ex);
+            Assert.AreEqual((long)CEP47ClientErrors.TokenIdDoesntExist, ex.Code);
         }
 
         [Test, Order(7)]
         public async Task TransferTest()
         {
             var deployHelper = _cep47Client.TransferToken(_user2Account.PublicKey,
-                _user1Account.PublicKey,
+                _user1AccountKey,
                 new List<BigInteger>() {new(10), new(11)},
                 2_000_000_000);
 
@@ -355,7 +476,7 @@ namespace Casper.Network.SDK.Clients.Test
         public async Task ApproveTest()
         {
             var deployHelper = _cep47Client.Approve(_user2Account.PublicKey,
-                _user1Account.PublicKey,
+                _user1AccountKey,
                 new List<BigInteger>() {new(12)},
                 2_000_000_000);
 
@@ -376,7 +497,7 @@ namespace Casper.Network.SDK.Clients.Test
         [Test, Order(8)]
         public async Task GetApprovedSpenderTest()
         {
-            var spender = await _cep47Client.GetApprovedSpender(_user2Account.PublicKey, new BigInteger(12));
+            var spender = await _cep47Client.GetApprovedSpender(_user2AccountKey, new BigInteger(12));
             var user1Acct = new AccountHashKey(_user1Account.PublicKey).ToString();
             Assert.AreEqual(user1Acct, spender.ToString());
         }
@@ -385,8 +506,8 @@ namespace Casper.Network.SDK.Clients.Test
         public async Task TransferFromTest()
         {
             var deployHelper = _cep47Client.TransferTokenFrom(_user1Account.PublicKey,
-                _user2Account.PublicKey,
-                _ownerAccount.PublicKey,
+                _user2AccountKey,
+                _ownerAccountKey,
                 new List<BigInteger>() {new(12)},
                 2_000_000_000);
 
@@ -412,7 +533,7 @@ namespace Casper.Network.SDK.Clients.Test
         public async Task BurnTest()
         {
             var deployHelper = _cep47Client.BurnOne(_user1Account.PublicKey,
-                _user1Account.PublicKey,
+                _user1AccountKey,
                 new BigInteger(20),
                 1_000_000_000);
 
@@ -434,7 +555,7 @@ namespace Casper.Network.SDK.Clients.Test
             });
 
             var deployHelper2 = _cep47Client.BurnMany(_user1Account.PublicKey,
-                _user1Account.PublicKey,
+                _user1AccountKey,
                 new List<BigInteger>() {new(21), new(22)},
                 2_000_000_000);
 
@@ -464,31 +585,31 @@ namespace Casper.Network.SDK.Clients.Test
         [Test, Order(11)]
         public void EventsTriggeredTest()
         {
-            var ev = events.FirstOrDefault(evt => evt.EventType == CEP47EventType.MintOne &&
+            var ev = _events.FirstOrDefault(evt => evt.EventType == CEP47EventType.MintOne &&
                                                    evt.TokenId == "1");
             Assert.IsNotNull(ev);
             Assert.IsNotNull(ev.ContractPackageHash);
             Assert.IsNotNull(ev.DeployHash);
             Assert.IsNotNull(ev.Recipient);
             
-            Assert.AreEqual(7, events.Count(evt => evt.EventType == CEP47EventType.MintOne));
+            Assert.AreEqual(7, _events.Count(evt => evt.EventType == CEP47EventType.MintOne));
 
-            Assert.IsTrue(events.Any(evt => evt.EventType == CEP47EventType.Transfer &&
+            Assert.IsTrue(_events.Any(evt => evt.EventType == CEP47EventType.Transfer &&
                                             evt.TokenId == "10"));
-            Assert.IsTrue(events.Any(evt => evt.EventType == CEP47EventType.Transfer &&
+            Assert.IsTrue(_events.Any(evt => evt.EventType == CEP47EventType.Transfer &&
                                             evt.TokenId == "11"));
-            Assert.IsTrue(events.Any(evt => evt.EventType == CEP47EventType.Transfer &&
+            Assert.IsTrue(_events.Any(evt => evt.EventType == CEP47EventType.Transfer &&
                                             evt.TokenId == "12"));
             
-            ev = events.FirstOrDefault(evt => evt.EventType == CEP47EventType.Approve &&
+            ev = _events.FirstOrDefault(evt => evt.EventType == CEP47EventType.Approve &&
                                             evt.TokenId == "12");
             Assert.IsNotNull(ev);
             Assert.IsNotNull(ev.Owner);
             Assert.IsNotNull(ev.Spender);
             
-            Assert.AreEqual(3, events.Count(evt => evt.EventType == CEP47EventType.BurnOne));
+            Assert.AreEqual(3, _events.Count(evt => evt.EventType == CEP47EventType.BurnOne));
             
-            Assert.IsTrue(events.Any(evt => evt.EventType == CEP47EventType.UpdateMetadata &&
+            Assert.IsTrue(_events.Any(evt => evt.EventType == CEP47EventType.UpdateMetadata &&
                                             evt.TokenId == "1"));
         }
     }

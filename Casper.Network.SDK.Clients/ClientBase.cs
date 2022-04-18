@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Casper.Network.SDK.JsonRpc;
@@ -7,7 +8,7 @@ using Casper.Network.SDK.Types;
 
 namespace Casper.Network.SDK.Clients
 {
-    public class ClientBase
+    public abstract class ClientBase
     {
         protected const ulong DEFAULT_GAS_PRICE = 1;
 
@@ -43,5 +44,24 @@ namespace Casper.Network.SDK.Clients
             
             throw new Exception("Unsupported StoredValue type: " + typeof(T));
         }
+        
+        public async Task<bool> SetContractHash(PublicKey publicKey, string namedKey)
+        {
+            var response = await CasperClient.GetAccountInfo(publicKey);
+            var result = response.Parse();
+            var nk = result.Account.NamedKeys.FirstOrDefault(k => k.Name == namedKey);
+            if (nk != null)
+                return await SetContractHash(nk.Key);
+
+            throw new ContractException($"Named key '{namedKey}' not found.", (int)ERC20ClientErrors.ContractNotFound);
+        }
+        
+        public async Task<bool> SetContractHash(string contractHash)
+        {
+            var key = GlobalStateKey.FromString(contractHash);
+            return await SetContractHash(key);
+        }
+
+        public abstract Task<bool> SetContractHash(GlobalStateKey contractHash);
     }
 }

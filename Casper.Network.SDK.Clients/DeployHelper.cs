@@ -3,10 +3,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Casper.Network.SDK.JsonRpc;
+using Casper.Network.SDK.JsonRpc.ResultTypes;
 using Casper.Network.SDK.Types;
 
 namespace Casper.Network.SDK.Clients
 {
+    public delegate void ProcessDeployResult(GetDeployResult deployResult);
+    
     public class DeployHelper
     {
         private ICasperClient _casperClient;
@@ -25,10 +28,20 @@ namespace Casper.Network.SDK.Clients
             .FirstOrDefault(t => t.Type == TransformType.WriteContractPackage)
             ?.Key as HashKey ?? null;
 
+        private ProcessDeployResult _processDeployResultCallback;
+        
         public DeployHelper(Deploy deploy, ICasperClient casperClient)
         {
             Deploy = deploy;
             _casperClient = casperClient;
+        }
+        
+        public DeployHelper(Deploy deploy, ICasperClient casperClient, 
+            ProcessDeployResult processDeployResult)
+        {
+            Deploy = deploy;
+            _casperClient = casperClient;
+            _processDeployResultCallback = processDeployResult;
         }
 
         public void Sign(KeyPair keyPair)
@@ -41,6 +54,7 @@ namespace Casper.Network.SDK.Clients
             await _casperClient.PutDeploy(Deploy);
         }
 
+        
         public async Task WaitDeployProcess()
         {
             var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(120));
@@ -48,6 +62,8 @@ namespace Casper.Network.SDK.Clients
 
             var result = deployResponse.Parse();
             ExecutionResult = result.ExecutionResults.First();
+            
+            _processDeployResultCallback?.Invoke(result);
         }
     }
 }
