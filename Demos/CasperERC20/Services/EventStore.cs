@@ -7,7 +7,7 @@ namespace CasperERC20.Services;
 
 public class EventStore
 {
-    private readonly ICasperSSEService _sseService;
+    private readonly ISSEClient _sseService;
     private readonly ILogger<EventStore> _logger;
     
     private readonly List<Block> _blocks = new List<Block>();
@@ -22,7 +22,7 @@ public class EventStore
     public delegate void NewDeploy(DeployProcessed newDeploy);
     public event NewDeploy OnNewDeploy;
     
-    public EventStore(ICasperSSEService sseService, ILogger<EventStore> logger)
+    public EventStore(ISSEClient sseService, ILogger<EventStore> logger)
     {
         _sseService = sseService;
         _logger = logger;

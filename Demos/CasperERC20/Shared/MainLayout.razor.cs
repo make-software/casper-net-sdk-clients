@@ -26,7 +26,7 @@ public partial class MainLayout
     private SignerStatus SignerStatus = SignerStatus.Unknown;
     private string ActivePk = string.Empty;
 
-    [Inject] protected ICasperSSEService SSEService { get; set; }
+    [Inject] protected ISSEClient SSEService { get; set; }
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

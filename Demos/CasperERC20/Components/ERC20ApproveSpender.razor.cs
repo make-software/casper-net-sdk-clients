@@ -27,7 +27,9 @@ public partial class ERC20ApproveSpender
         var amount = BigInteger.Parse(ApproveAmount);
         var payment = new BigInteger(150000000);
 
-        var deployHelper = ERC20Client.ApproveSpender(ownerPK, spenderPK, amount,
+        var spenderAccHash = new AccountHashKey(spenderPK);
+
+        var deployHelper = ERC20Client.ApproveSpender(ownerPK, spenderAccHash, amount,
             payment);
 
         var signed = await SignerInterop.RequestSignature(deployHelper.Deploy, OwnerPublicKey, null);

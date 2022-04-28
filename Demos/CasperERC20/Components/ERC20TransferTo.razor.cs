@@ -27,7 +27,9 @@ public partial class ERC20TransferTo
         var amount = BigInteger.Parse(Amount);
         var payment = new BigInteger(200000000);
         
-        var deployHelper = ERC20Client.TransferTokens(srcPK, tgtPK, amount,
+        var tgtAccHash = new AccountHashKey(tgtPK);
+
+        var deployHelper = ERC20Client.TransferTokens(srcPK, tgtAccHash, amount,
             payment);
 
         var signed = await SignerInterop.RequestSignature(deployHelper.Deploy, SourcePublicKey, TargetPublicKey);

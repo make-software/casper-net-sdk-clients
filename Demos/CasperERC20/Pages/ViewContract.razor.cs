@@ -69,7 +69,8 @@ public partial class ViewContract
         BalanceOf = null;
         try
         {
-            var task = ERC20Client.GetBalance(PublicKey.FromHexString(SubjectPK));
+            var accHash = new AccountHashKey(PublicKey.FromHexString(SubjectPK));
+            var task = ERC20Client.GetBalance(accHash);
 
             await task.ContinueWith(t =>
             {
@@ -93,8 +94,9 @@ public partial class ViewContract
         ApprovedBalance = null;
         try
         {
-            var task = ERC20Client.GetAllowance(PublicKey.FromHexString(OwnerPK),
-                PublicKey.FromHexString(SpenderPK));
+            var ownerAccHash = new AccountHashKey(PublicKey.FromHexString(OwnerPK));
+            var spenderAccHash = new AccountHashKey(PublicKey.FromHexString(SpenderPK));
+            var task = ERC20Client.GetAllowance(ownerAccHash, spenderAccHash);
 
             await task.ContinueWith(t =>
             {
