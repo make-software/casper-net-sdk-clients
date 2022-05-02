@@ -1,6 +1,5 @@
 using Blazored.LocalStorage;
 using Casper.Network.SDK.Clients;
-using CasperERC20.Services;
 using Casper.Network.SDK.Web;
 using Casper.Network.SDK.WebClients;
 using Radzen;
@@ -13,8 +12,6 @@ builder.Services.AddServerSideBlazor();
 
 // Add Radzen services.
 builder.Services.AddScoped<NotificationService>();
-
-builder.Services.AddSingleton<EventStore>();
 
 // Add Casper Network SDK services
 builder.Services.AddCasperRPCService(builder.Configuration);

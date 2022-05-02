@@ -59,10 +59,14 @@ a, .btn-link {
     color: white;
 }
 
-    .blazor-error-boundary::after {
-        content: "An error has occurred."
-    }
+.blazor-error-boundary::after {
+    content: "An error has occurred."
+}
 
-    h3 span.gskey {
-        margin-left: 15px;
-    }
+h3 span.gskey {
+    margin-left: 15px;
+}
+
+table.rpc-results {
+    background-color: #f0f0f0;
+}

@@ -1,8 +1,5 @@
-﻿using CasperERC20.Services;
-using Casper.Network.SDK.SSE;
-using Casper.Network.SDK.Web;
+﻿using Casper.Network.SDK.Web;
 using Microsoft.AspNetCore.Components;
-using System.Collections.Generic;
 
 namespace CasperERC20.Shared;
 
@@ -20,27 +17,23 @@ public partial class MainLayout
     [Inject] protected CasperSignerInterop SignerInterop { get; set; }
 
     [Inject] protected ILogger<MainLayout> Logger { get; set; }
-
-    [Inject] protected EventStore EventStore { get; set; }
     
-    private SignerStatus SignerStatus = SignerStatus.Unknown;
-    private string ActivePk = string.Empty;
+    private SignerStatus _signerStatus = SignerStatus.Unknown;
+    private string _activePk = string.Empty;
 
-    [Inject] protected ISSEClient SSEService { get; set; }
-    
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             SignerInterop.OnStateUpdate += (connected, unlocked, key) =>
             {
-                ActivePk = key;
+                _activePk = key;
                 if (!connected)
-                    SignerStatus = SignerStatus.Disconnected;
+                    _signerStatus = SignerStatus.Disconnected;
                 else if (!unlocked)
-                    SignerStatus = SignerStatus.Connected;
+                    _signerStatus = SignerStatus.Connected;
                 else
-                    SignerStatus = SignerStatus.Unlocked;
+                    _signerStatus = SignerStatus.Unlocked;
                 StateHasChanged();
             };
             var signerPresent = await SignerInterop.IsSignerPresent();
@@ -48,7 +41,7 @@ public partial class MainLayout
             if (!signerPresent)
             {
                 Logger.LogDebug("Signer extension not present.");
-                SignerStatus = SignerStatus.NotPresent;
+                _signerStatus = SignerStatus.NotPresent;
                 StateHasChanged();
                 return;
             }
@@ -59,7 +52,7 @@ public partial class MainLayout
             if (!isConnected)
             {
                 Logger.LogDebug("Signer extension not connected to this site.");
-                SignerStatus = SignerStatus.Disconnected;
+                _signerStatus = SignerStatus.Disconnected;
                 StateHasChanged();
                 return;
             }
@@ -67,10 +60,10 @@ public partial class MainLayout
             var state = await SignerInterop.GetState();
             Console.WriteLine(state);
 
-            SignerStatus = state.IsUnlocked ? SignerStatus.Unlocked : SignerStatus.Connected;
+            _signerStatus = state.IsUnlocked ? SignerStatus.Unlocked : SignerStatus.Connected;
             if (state.IsUnlocked)
             {
-                ActivePk = state.ActivePK;
+                _activePk = state.ActivePK;
                 Logger.LogDebug("Signer extension unlock. Active key: " + GetActivePKLabel());
             }
             else
@@ -82,21 +75,14 @@ public partial class MainLayout
         }
     }
 
-    // void IDisposable.Dispose()
-    // {
-    //     SSEService.RemoveEventCallback(EventType.BlockAdded, cbDeploysName);
-    //     SSEService.RemoveEventCallback(EventType.DeployProcessed, cbDeploysName);
-    // }
-    
-    protected async Task OnConnectClick()
+    private async Task OnConnectClick()
     {
-        if (SignerStatus >= SignerStatus.Disconnected)
+        if (_signerStatus >= SignerStatus.Disconnected)
             await SignerInterop.RequestConnection();
-        // StateHasChanged();
     }
 
-    protected string GetActivePKLabel()
+    private string GetActivePKLabel()
     {
-        return $"{ActivePk[..5]}..{ActivePk[28..32]}";
+        return $"{_activePk[..5]}..{_activePk[28..32]}";
     }
 }

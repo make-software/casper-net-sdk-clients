@@ -1,6 +1,6 @@
 ﻿@page "/contract/{ContractHash}"
 
-@inherits BlazorDelegate.Pages.ExplorerComponent
+@inherits CasperERC20.Pages.ExplorerComponent
 
 <div class="container">
     <div class="row">
@@ -40,62 +40,24 @@
                     <RadzenTabsItem Text="Balance" Disabled="@(_detailsError== null || _detailsError.Visible)">
 
                         <div class="row px-3">
-                            <PublicKeyTextBox Text="Public Key" SignerRef="@SignerInterop" @bind-Value="@SubjectPK"/>
+                            <PublicKeyTextBox Text="Public Key" SignerRef="@SignerInterop" @bind-Value="@_subjectPK"/>
                             <div>
                                 <RadzenButton class="mt-4 w-100" Click=@(args => OnGetBalanceClick()) Text="Get Balance"/>
                             </div>
-                                <CasperClientError @ref="_getBalanceError"></CasperClientError>
-                            @if (BalanceOf != null && _getBalanceError.Visible == false)
-                            {
-                                <div>
-                                    <table class="table mt-4">
-                                        <tbody>
-                                        <tr>
-                                            <th scope="row">Public Key</th>
-                                            <td>@SubjectPK</td>
-                                        </tr>
-                                        <tr>
-                                            <th scope="row">Balance</th>
-                                            <td>@BalanceOf</td>
-                                        </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            }
+                            <CasperClientError @ref="_getBalanceError"></CasperClientError>
+                            @_balanceResult
                         </div>
                     </RadzenTabsItem>
                     <RadzenTabsItem Text="Allowance" Disabled="@(_detailsError== null || _detailsError.Visible)">
                         <div class="row px-3">
-                            <PublicKeyTextBox Text="Owner Public Key" SignerRef="@SignerInterop" @bind-Value="@OwnerPK"/>
-
-                            <PublicKeyTextBox Class="mt-4" Text="Spender Public Key"SignerRef="@SignerInterop" @bind-Value="@SpenderPK"/>
-
+                            <PublicKeyTextBox Text="Owner Public Key" SignerRef="@SignerInterop" @bind-Value="@_ownerPK"/>
+                            <PublicKeyTextBox Class="mt-4" Text="Spender Public Key" SignerRef="@SignerInterop" @bind-Value="@_spenderPK"/>
                             <div>
                                 <RadzenButton class="mt-4 w-100" Click=@(OnGetAllowanceClick) Text="Get Allowance"/>
                             </div>
-
-                                <CasperClientError @ref="_getAllowanceError"></CasperClientError>
-                            @if (ApprovedBalance != null && _getAllowanceError.Visible == false)
-                            {
-                                <table class="table table-hover mt-4">
-                                    <tbody>
-                                    <tr>
-                                        <th scope="row">Owner Public Key</th>
-                                        <td>@OwnerPK</td>
-                                    </tr>
-                                    <tr>
-                                        <th scope="row">Spender Public Key</th>
-                                        <td>@SpenderPK</td>
-                                    </tr>
-                                    <tr>
-                                        <th scope="row">Approved Balance</th>
-                                        <td>@ApprovedBalance</td>
-                                    </tr>
-                                    </tbody>
-                                </table>
-                            }
+                            <CasperClientError @ref="_getAllowanceError"></CasperClientError>
+                            <div>@_allowanceResult</div>
                         </div>
-
                     </RadzenTabsItem>
                     <RadzenTabsItem Text="Transfer" Disabled="@(_detailsError== null || _detailsError.Visible)">
                         <div class="row px-3">

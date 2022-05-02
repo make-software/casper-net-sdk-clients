@@ -24,21 +24,21 @@
 
                     </ul>
                     <form class="d-flex">
-                        @if (@SignerStatus == SignerStatus.NotPresent)
+                        @if (_signerStatus == SignerStatus.NotPresent)
                         {
                             <a href="https://chrome.google.com/webstore/detail/casperlabs-signer/djhndpllfiibmcdbnmaaahkhchcoijce" target="_blank">
                                 <RadzenButton Click="@OnConnectClick" Text="Install signer" Icon="arrow_circle_down" ButtonStyle="ButtonStyle.Danger"/>
                             </a>
                         }
-                        else if (@SignerStatus == SignerStatus.Disconnected)
+                        else if (_signerStatus == SignerStatus.Disconnected)
                         {
                             <RadzenButton Click="@OnConnectClick" Text="Connect to signer" Icon="check_circle" ButtonStyle="ButtonStyle.Danger"/>
                         }
-                        else if (@SignerStatus == SignerStatus.Connected)
+                        else if (_signerStatus == SignerStatus.Connected)
                         {
                             <RadzenButton Click="@OnConnectClick" Text="Unlock signer" Icon="check_circle" ButtonStyle="ButtonStyle.Primary"/>
                         }
-                        else if (@SignerStatus == SignerStatus.Unlocked)
+                        else if (_signerStatus == SignerStatus.Unlocked)
                         {
                             <RadzenButton Click="@OnConnectClick" Text="@GetActivePKLabel()" Icon="key" ButtonStyle="ButtonStyle.Success"/>
                         }

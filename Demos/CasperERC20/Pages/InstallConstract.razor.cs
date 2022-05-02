@@ -1,10 +1,8 @@
 ﻿using System.Numerics;
 using Casper.Network.SDK.Clients;
-using Casper.Network.SDK.WebClients;
 using Casper.Network.SDK.Types;
 using CasperERC20.Components;
 using Microsoft.AspNetCore.Components;
-using Radzen.Blazor;
 
 namespace CasperERC20.Pages;
 
@@ -24,14 +22,15 @@ public partial class InstallConstract
 
     // account signer will be the owner of the contract
     //
-    private string _ownerPK = null;
+    private string _ownerPK;
     
     // deploy hash for the contract installation
     //
-    private string _deployHash = null;
+    private string _deployHash;
 
-    private string _contractHash = null;
+    private string _contractHash;
     
+    private CasperClientError _signDeployError;
     private CasperClientError _getDeployError;
 
     [Inject] private NavigationManager NavigationManager { get; set; }
@@ -54,56 +53,65 @@ public partial class InstallConstract
         }
     }
 
-    private RadzenSteps Steps;
-
-    async Task OnGoToSignDeployClick()
+    private int _stepsIndex = 0;
+        
+    void OnGoToSignDeployClick()
     {
-        Steps.SelectedIndex = 1;
+        _stepsIndex = 1;
         StateHasChanged();
     }
     
     async Task OnDeployClick()
     {
+        _signDeployError.Hide();
+        
         try
         {
             var bytes = File.ReadAllBytes("erc20_token.wasm");
         
             var state = await SignerInterop.GetState();
 
-            var deploy = ERC20ClientWeb?.InstallContract(bytes, _name, _symbol, 
+            var deployHelper = ERC20ClientWeb.InstallContract(bytes, _name, _symbol, 
                 byte.Parse(_decimals), BigInteger.Parse(_totalSupply),
                 PublicKey.FromHexString(state.ActivePK), 250_000_000_000);
         
-            var signed = await SignerInterop.RequestSignature(deploy.Deploy, state.ActivePK, null);
+            var signed = await SignerInterop.RequestSignature(deployHelper.Deploy, state.ActivePK, null);
             if (signed)
             {
-                _deployHash = deploy.Deploy.Hash;
+                _deployHash = deployHelper.Deploy.Hash;
 
-                Steps.SelectedIndex = 2;
+                _stepsIndex = 2;
                 StateHasChanged();
-                
-                await deploy.PutDeploy();
 
-                var task = deploy.WaitDeployProcess();
-                await task.ContinueWith(t =>
+                try
                 {
-                    if (t.IsFaulted)
-                        _getDeployError.ShowError("Error in the deploy", t.Exception);
-                    else if (t.IsCanceled)
-                        _getDeployError.ShowError("Timeout.");
-                    else
+                    await deployHelper.PutDeploy();
+                    _getDeployError.ShowWarning("Waiting for deploy execution results (" + deployHelper.Deploy.Hash +
+                                                ")");
+
+                    await deployHelper.WaitDeployProcess();
+
+                    if (deployHelper.IsSuccess)
                     {
-                        _contractHash = deploy.ContractHash.ToString();
-                        LocalStorage.SetItemAsStringAsync($"contract-{_symbol}", _contractHash);
+                        _getDeployError.Hide();
+                        _contractHash = deployHelper.ContractHash.ToString();
+                        await LocalStorage.SetItemAsStringAsync($"contract-{_symbol}", _contractHash);
                     }
-                });
+                    else
+                        _getDeployError.ShowError("Deploy executed with error. " +
+                                                  deployHelper.ExecutionResult.ErrorMessage);
+                }
+                catch (Exception e)
+                {
+                    _getDeployError.ShowError("Error in deploy.", e);
+                }
             }
             else
-                throw new Exception("Deploy not signed.");
+                _signDeployError.ShowError("Deploy not signed.");
         }
         catch (Exception e)
         {
-            _getDeployError?.ShowError("Error", e);
+            _getDeployError.ShowError("Error", e);
         }
         
         await InvokeAsync(StateHasChanged);

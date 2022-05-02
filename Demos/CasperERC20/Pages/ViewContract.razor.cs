@@ -1,5 +1,4 @@
 ﻿using Casper.Network.SDK.Clients;
-using Casper.Network.SDK.WebClients;
 using Casper.Network.SDK.Types;
 using CasperERC20.Components;
 using Microsoft.AspNetCore.Components;
@@ -8,77 +7,47 @@ namespace CasperERC20.Pages;
 
 public partial class ViewContract
 {
-    [Inject] private NavigationManager NavigationManager { get; set; }
-
     [Inject] private IERC20Client ERC20Client { get; set; }
 
     [Parameter] public string ContractHash { get; set; }
     
     private CasperClientError _detailsError;
-    private CasperClientError _getBalanceError;
-    private CasperClientError _getAllowanceError;
-
-    private string SubjectPK;
-    private string BalanceOf;
-
-    private string OwnerPK;
-    private string SpenderPK;
-    private string ApprovedBalance;
-
-    // public override Task SetParametersAsync(ParameterView parameters)
-    // {
-    //     foreach (var parameter in parameters)
-    //     {
-    //         switch (parameter.Name)
-    //         {
-    //             case nameof(ContractHash):
-    //                 ContractHash = (string) parameter.Value;
-    //                 var task = ERC20Client.SetContractHash(ContractHash);
-    //                 task.ContinueWith(t =>
-    //                 {
-    //                     if(t.IsCompleted && t.Exception != null)
-    //                         _detailsError.Show("Cannot retrieve contract named keys", t.Exception);
-    //                     InvokeAsync(StateHasChanged);
-    //                 });
-    //                 break;
-    //             default:
-    //                 throw new ArgumentException($"Unknown parameter: {parameter.Name}");
-    //         }
-    //     }
-    //
-    //     return base.SetParametersAsync(ParameterView.Empty);
-    // }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            var task = ERC20Client.SetContractHash(ContractHash);
-            await task.ContinueWith(t =>
+            try
             {
-                if(t.IsCompleted && t.Exception != null)
-                    _detailsError.ShowError("Cannot retrieve contract named keys", t.Exception);
-                InvokeAsync(StateHasChanged);
-            });
+                await ERC20Client.SetContractHash(ContractHash);
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (Exception e)
+            {
+                _detailsError.ShowError("Cannot retrieve contract named keys", e);
+            }
         }
     }
     
-    public async Task OnGetBalanceClick()
+    private string _subjectPK;
+    private MarkupString _balanceResult;
+    private CasperClientError _getBalanceError;
+
+    private async Task OnGetBalanceClick()
     {
         _getBalanceError.Hide();
-        BalanceOf = null;
+        
         try
         {
-            var accHash = new AccountHashKey(PublicKey.FromHexString(SubjectPK));
-            var task = ERC20Client.GetBalance(accHash);
+            var accHash = new AccountHashKey(PublicKey.FromHexString(_subjectPK));
+            var balance = await ERC20Client.GetBalance(accHash);
 
-            await task.ContinueWith(t =>
-            {
-                if (t.IsCompleted && t.Exception == null)
-                    BalanceOf = t.Result.ToString();
-                else
-                    _getBalanceError?.ShowError("Account not found", t.Exception);
-            });
+            _balanceResult = new MarkupString($@"<table class='table rpc-results mt-4'><tbody>
+                        <tr><th scope='row'>Public Key</th><td>{_subjectPK}</td></tr>
+                        <tr><th scope='row'>Balance</th><td>{balance}</td></tr>
+                        </tbody></table>" + _balanceResult);
+
+            _subjectPK = string.Empty;
         }
         catch (Exception e)
         {
@@ -88,23 +57,29 @@ public partial class ViewContract
         await InvokeAsync(StateHasChanged);
     }
 
-    public async Task OnGetAllowanceClick()
+    private string _ownerPK;
+    private string _spenderPK;
+    private MarkupString _allowanceResult;
+    private CasperClientError _getAllowanceError;
+
+    private async Task OnGetAllowanceClick()
     {
         _getAllowanceError.Hide();
-        ApprovedBalance = null;
+        
         try
         {
-            var ownerAccHash = new AccountHashKey(PublicKey.FromHexString(OwnerPK));
-            var spenderAccHash = new AccountHashKey(PublicKey.FromHexString(SpenderPK));
-            var task = ERC20Client.GetAllowance(ownerAccHash, spenderAccHash);
+            var ownerAccHash = new AccountHashKey(PublicKey.FromHexString(_ownerPK));
+            var spenderAccHash = new AccountHashKey(PublicKey.FromHexString(_spenderPK));
+            var allowance = await ERC20Client.GetAllowance(ownerAccHash, spenderAccHash);
 
-            await task.ContinueWith(t =>
-            {
-                if (t.IsCompleted && t.Exception == null)
-                    ApprovedBalance = t.Result.ToString();
-                else
-                    _getAllowanceError?.ShowError("Account not found", t.Exception);
-            });
+            _allowanceResult = new MarkupString($@"<table class='table rpc-results mt-4'><tbody>
+                        <tr><th scope='row'>Owner Public Key</th><td>{_ownerPK}</td></tr>
+                        <tr><th scope='row'>Spender Public Key</th><td>{_spenderPK}</td></tr>
+                        <tr><th scope='row'>Approved Balance</th><td>{allowance}</td></tr>
+                        </tbody></table>" + _allowanceResult);
+
+            _ownerPK = string.Empty;
+            _spenderPK = string.Empty;
         }
         catch (Exception e)
         {

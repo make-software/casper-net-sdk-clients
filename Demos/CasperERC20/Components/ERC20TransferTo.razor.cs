@@ -15,16 +15,15 @@ public partial class ERC20TransferTo
 
     private CasperClientError _deployAlert;
 
-    private string SourcePublicKey;
-    private string TargetPublicKey;
-    private string Amount;
-    private string WaitDeployMsg;
+    private string _sourcePublicKey;
+    private string _targetPublicKey;
+    private string _amount;
 
     private async Task OnTransferClick()
     {
-        var srcPK = PublicKey.FromHexString(SourcePublicKey);
-        var tgtPK = PublicKey.FromHexString(TargetPublicKey);
-        var amount = BigInteger.Parse(Amount);
+        var srcPK = PublicKey.FromHexString(_sourcePublicKey);
+        var tgtPK = PublicKey.FromHexString(_targetPublicKey);
+        var amount = BigInteger.Parse(_amount);
         var payment = new BigInteger(200000000);
         
         var tgtAccHash = new AccountHashKey(tgtPK);
@@ -32,27 +31,26 @@ public partial class ERC20TransferTo
         var deployHelper = ERC20Client.TransferTokens(srcPK, tgtAccHash, amount,
             payment);
 
-        var signed = await SignerInterop.RequestSignature(deployHelper.Deploy, SourcePublicKey, TargetPublicKey);
+        var signed = await SignerInterop.RequestSignature(deployHelper.Deploy, _sourcePublicKey, _targetPublicKey);
         if (signed)
         {
-            await deployHelper.PutDeploy();
-            
-            _deployAlert.ShowWarning("Waiting for deploy execution results (" + deployHelper.Deploy.Hash + ")");
-            var task = deployHelper.WaitDeployProcess();
-            await task.ContinueWith(t =>
+            try
             {
-                if (t.IsCompleted && t.IsFaulted)
-                {
-                    _deployAlert.ShowError("Error in deploy.", t.Exception);
-                }
+                await deployHelper.PutDeploy();
+                _deployAlert.ShowWarning("Waiting for deploy execution results (" + deployHelper.Deploy.Hash + ")");
+                
+                await deployHelper.WaitDeployProcess();
+                
+                if (deployHelper.IsSuccess)
+                    _deployAlert.ShowSuccess("Deploy executed");
                 else
-                {
-                    if(deployHelper.IsSuccess)
-                        _deployAlert.ShowSuccess("Deploy executed");
-                    else
-                        _deployAlert.ShowError("Deploy executed with error. " + deployHelper.ExecutionResult.ErrorMessage);
-                }
-            });
+                    _deployAlert.ShowError("Deploy executed with error. " +
+                                           deployHelper.ExecutionResult.ErrorMessage);
+            }
+            catch (Exception e)
+            {
+                _deployAlert.ShowError("Error in deploy.", e);
+            }
 
             await InvokeAsync(StateHasChanged);
         }

@@ -1,13 +1,13 @@
 ﻿<PublicKeyTextBox Text="Owner Public Key" SignerRef="@SignerInterop"
-                  LinkedToSigner="true" @bind-Value="@OwnerPublicKey"/>
+                  LinkedToSigner="true" @bind-Value="@_ownerPublicKey"/>
 
 <PublicKeyTextBox Class="mt-4" Text="Spender Public Key" SignerRef="@SignerInterop" 
-                  @bind-Value="@SpenderPublicKey"/>
+                  @bind-Value="@_spenderPublicKey"/>
 
 <div>
     <h5 class="mt-4">Amount</h5>
     <RadzenMask Mask="************************" CharacterPattern="[0-9]" Placeholder="0" 
-                Name="Amount" @bind-Value="@ApproveAmount" Style="width: 100%;"/>
+                Name="Amount" @bind-Value="@_approveAmount" Style="width: 100%;"/>
 </div>
 
 <div>

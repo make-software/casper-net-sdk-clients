@@ -1,11 +1,11 @@
 ﻿<PublicKeyTextBox Text="Transfer From" SignerRef="@SignerInterop" 
-                  LinkedToSigner="true" @bind-Value="@SourcePublicKey"/>
+                  LinkedToSigner="true" @bind-Value="@_sourcePublicKey"/>
 
-<PublicKeyTextBox Class="mt-4" Text="Transfer to Public Key" SignerRef="@SignerInterop" @bind-Value="@TargetPublicKey"/>
+<PublicKeyTextBox Class="mt-4" Text="Transfer to Public Key" SignerRef="@SignerInterop" @bind-Value="@_targetPublicKey"/>
 
 <div>
   <h5 class="mt-4">Amount</h5>
-  <RadzenMask Mask="************************" CharacterPattern="[0-9]" Placeholder="0" Name="Amount" @bind-Value="@Amount" Style="width: 100%;"/>
+  <RadzenMask Mask="************************" CharacterPattern="[0-9]" Placeholder="0" Name="Amount" @bind-Value="@_amount" Style="width: 100%;"/>
 </div>
 
 <div>
