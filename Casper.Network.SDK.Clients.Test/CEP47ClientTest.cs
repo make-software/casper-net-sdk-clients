@@ -162,7 +162,7 @@ namespace Casper.Network.SDK.Clients.Test
                 {"color", "green"}
             };
 
-            var deployHelper = _cep47Client.MintOne(_ownerAccount.PublicKey,
+            var deployHelper = _cep47Client.MintOne(_user2Account.PublicKey,
                 _user2AccountKey,
                 new BigInteger(1),
                 tokenMeta,
@@ -171,7 +171,7 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);
 
-            deployHelper.Sign(_ownerAccount);
+            deployHelper.Sign(_user2Account);
 
             await deployHelper.PutDeploy();
 

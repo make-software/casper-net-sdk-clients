@@ -16,7 +16,7 @@
         <Description>
           Contract Clients for web applications.
         </Description>
-        <RootNamespace>Csper.NetworkSDK.WebClients</RootNamespace>
+        <RootNamespace>Casper.NetworkSDK.WebClients</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>

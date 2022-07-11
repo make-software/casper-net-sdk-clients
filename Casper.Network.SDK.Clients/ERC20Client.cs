@@ -25,22 +25,25 @@ namespace Casper.Network.SDK.Clients
         {
         }
 
-        public override async Task<bool> SetContractHash(GlobalStateKey contractHash)
+        public override async Task<bool> SetContractHash(GlobalStateKey contractHash, bool skipNamedkeysQuery=false)
         {
             ContractHash = contractHash as HashKey;
 
-            var result = await GetNamedKey<CLValue>("name");
-            Name = result.ToString();
+            if (!skipNamedkeysQuery)
+            {
+                var result = await GetNamedKey<CLValue>("name");
+                Name = result.ToString();
 
-            result = await GetNamedKey<CLValue>("symbol");
-            Symbol = result.ToString();
+                result = await GetNamedKey<CLValue>("symbol");
+                Symbol = result.ToString();
 
-            result = await GetNamedKey<CLValue>("decimals");
-            Decimals = result.ToByte();
+                result = await GetNamedKey<CLValue>("decimals");
+                Decimals = result.ToByte();
 
-            result = await GetNamedKey<CLValue>("total_supply");
-            TotalSupply = result.ToBigInteger();
-
+                result = await GetNamedKey<CLValue>("total_supply");
+                TotalSupply = result.ToBigInteger();
+            }
+            
             return true;
         }
 

@@ -14,11 +14,11 @@ namespace Casper.Network.SDK.Clients
 
         BigInteger TotalSupply { get; }
 
-        Task<bool> SetContractHash(PublicKey publicKey, string namedKey);
+        Task<bool> SetContractHash(PublicKey publicKey, string namedKey, bool SkipNamedkeysQuery=false);
 
-        Task<bool> SetContractHash(string contractHash);
+        Task<bool> SetContractHash(string contractHash, bool SkipNamedkeysQuery=false);
 
-        Task<bool> SetContractHash(GlobalStateKey contractHash);
+        Task<bool> SetContractHash(GlobalStateKey contractHash, bool SkipNamedkeysQuery=false);
 
         DeployHelper InstallContract(byte[] wasmBytes,
             string name,

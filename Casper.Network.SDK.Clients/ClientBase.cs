@@ -45,23 +45,23 @@ namespace Casper.Network.SDK.Clients
             throw new Exception("Unsupported StoredValue type: " + typeof(T));
         }
         
-        public async Task<bool> SetContractHash(PublicKey publicKey, string namedKey)
+        public async Task<bool> SetContractHash(PublicKey publicKey, string namedKey, bool skipNamedkeysQuery=false)
         {
             var response = await CasperClient.GetAccountInfo(publicKey);
             var result = response.Parse();
             var nk = result.Account.NamedKeys.FirstOrDefault(k => k.Name == namedKey);
             if (nk != null)
-                return await SetContractHash(nk.Key);
+                return await SetContractHash(nk.Key, skipNamedkeysQuery);
 
             throw new ContractException($"Named key '{namedKey}' not found.", (int)ERC20ClientErrors.ContractNotFound);
         }
         
-        public async Task<bool> SetContractHash(string contractHash)
+        public async Task<bool> SetContractHash(string contractHash, bool skipNamedkeysQuery=false)
         {
             var key = GlobalStateKey.FromString(contractHash);
-            return await SetContractHash(key);
+            return await SetContractHash(key, skipNamedkeysQuery);
         }
 
-        public abstract Task<bool> SetContractHash(GlobalStateKey contractHash);
+        public abstract Task<bool> SetContractHash(GlobalStateKey contractHash, bool skipNamedkeysQuery=false);
     }
 }

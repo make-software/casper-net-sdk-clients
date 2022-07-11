@@ -23,18 +23,21 @@ namespace Casper.Network.SDK.Clients
         {
         }
 
-        public override async Task<bool> SetContractHash(GlobalStateKey contractHash)
+        public override async Task<bool> SetContractHash(GlobalStateKey contractHash, bool skipNamedkeysQuery=false)
         {
             ContractHash = contractHash as HashKey;
 
-            var result = await GetNamedKey<CLValue>("name");
-            Name = result.ToString();
+            if (!skipNamedkeysQuery)
+            {
+                var result = await GetNamedKey<CLValue>("name");
+                Name = result.ToString();
 
-            result = await GetNamedKey<CLValue>("symbol");
-            Symbol = result.ToString();
+                result = await GetNamedKey<CLValue>("symbol");
+                Symbol = result.ToString();
 
-            result = await GetNamedKey<CLValue>("meta");
-            Meta = result.ToDictionary<string, string>();
+                result = await GetNamedKey<CLValue>("meta");
+                Meta = result.ToDictionary<string, string>();
+            }
 
             return true;
         }
@@ -153,7 +156,7 @@ namespace Casper.Network.SDK.Clients
                 new List<NamedArg>()
                 {
                     new NamedArg("recipient", CLValue.Key(recipientKey)),
-                    new NamedArg("token_ids", clTokenIds),
+                    // new NamedArg("token_ids", clTokenIds),
                     new NamedArg("token_metas", clMetas)
                 },
                 senderPk,

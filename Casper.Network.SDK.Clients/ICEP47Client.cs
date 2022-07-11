@@ -13,11 +13,11 @@ namespace Casper.Network.SDK.Clients
 
         Dictionary<string, string> Meta { get; }
 
-        Task<bool> SetContractHash(PublicKey publicKey, string namedKey);
+        Task<bool> SetContractHash(PublicKey publicKey, string namedKey, bool skipNamedkeysQuery=false);
 
-        Task<bool> SetContractHash(string contractHash);
+        Task<bool> SetContractHash(string contractHash, bool skipNamedkeysQuery=false);
 
-        Task<bool> SetContractHash(GlobalStateKey contractHash);
+        Task<bool> SetContractHash(GlobalStateKey contractHash, bool skipNamedkeysQuery=false);
 
         DeployHelper InstallContract(byte[] wasmBytes,
             string contractName,
