@@ -23,7 +23,7 @@ namespace Casper.Network.SDK.Clients
         {
         }
 
-        public override async Task<bool> SetContractHash(GlobalStateKey contractHash, bool skipNamedkeysQuery=false)
+        public override async Task<bool> SetContractHash(GlobalStateKey contractHash, bool skipNamedkeysQuery = false)
         {
             ContractHash = contractHash as HashKey;
 
@@ -118,13 +118,13 @@ namespace Casper.Network.SDK.Clients
 
         public DeployHelper MintOne(PublicKey senderPk,
             GlobalStateKey recipientKey,
-            BigInteger tokenId,
+            BigInteger? tokenId,
             Dictionary<string, string> meta,
             BigInteger paymentMotes,
             ulong ttl = 1800000)
         {
             return MintMany(senderPk, recipientKey,
-                new List<BigInteger>() {tokenId},
+                tokenId != null ? new List<BigInteger>() {tokenId.Value} : null,
                 new List<Dictionary<string, string>>() {meta},
                 paymentMotes,
                 ttl);
@@ -137,9 +137,17 @@ namespace Casper.Network.SDK.Clients
             BigInteger paymentMotes,
             ulong ttl = 1800000)
         {
+            var namedArgs = new List<NamedArg>()
+            {
+                new NamedArg("recipient", CLValue.Key(recipientKey))
+            };
+
             // create a list of U256 for the token ids
             //
-            var clTokenIds = CLValue.List(tokenIds.Select(t => CLValue.U256(t)).ToArray());
+            if (tokenIds != null)
+            {
+                namedArgs.Add(new("token_ids", CLValue.List(tokenIds.Select(t => CLValue.U256(t)).ToArray())));
+            }
 
             // create a list of Map<string,string> for the metadata of each token
             //
@@ -151,14 +159,11 @@ namespace Casper.Network.SDK.Clients
                 return CLValue.Map(dict);
             }).ToArray());
 
+            namedArgs.Add(new("token_metas", clMetas));
+
             var deploy = DeployTemplates.ContractCall(ContractHash,
                 "mint",
-                new List<NamedArg>()
-                {
-                    new NamedArg("recipient", CLValue.Key(recipientKey)),
-                    // new NamedArg("token_ids", clTokenIds),
-                    new NamedArg("token_metas", clMetas)
-                },
+                namedArgs,
                 senderPk,
                 paymentMotes,
                 ChainName,
@@ -175,21 +180,28 @@ namespace Casper.Network.SDK.Clients
             BigInteger paymentMotes,
             ulong ttl = 1800000)
         {
-            var clTokenIds = CLValue.List(tokenIds.Select(t => CLValue.U256(t)).ToArray());
+            var namedArgs = new List<NamedArg>()
+            {
+                new NamedArg("recipient", CLValue.Key(recipientKey)),
+                new NamedArg("count", (uint) tokenIds.Count),
+            };
+            
+            // create a list of U256 for the token ids
+            //
+            if (tokenIds != null)
+            {
+                namedArgs.Add(new("token_ids", CLValue.List(tokenIds.Select(t => CLValue.U256(t)).ToArray())));
+            }
 
             var dict = new Dictionary<CLValue, CLValue>();
             foreach (var kvp in meta)
                 dict.Add(kvp.Key, kvp.Value);
 
+            namedArgs.Add(new("token_metas", CLValue.Map(dict)));
+            
             var deploy = DeployTemplates.ContractCall(ContractHash,
                 "mint_copies",
-                new List<NamedArg>()
-                {
-                    new NamedArg("recipient", CLValue.Key(recipientKey)),
-                    new NamedArg("token_ids", clTokenIds),
-                    new NamedArg("token_meta", CLValue.Map(dict)),
-                    new NamedArg("count", (uint) tokenIds.Count),
-                },
+                namedArgs,
                 ownerPK,
                 paymentMotes,
                 ChainName,
@@ -381,7 +393,7 @@ namespace Casper.Network.SDK.Clients
 
                 throw;
             }
-            
+
             return null;
         }
 

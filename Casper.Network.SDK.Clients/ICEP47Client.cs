@@ -32,7 +32,7 @@ namespace Casper.Network.SDK.Clients
         
         DeployHelper MintOne(PublicKey senderPk,
             GlobalStateKey recipientKey,
-            BigInteger tokenId,
+            BigInteger? tokenId,
             Dictionary<string, string> meta,
             BigInteger paymentMotes,
             ulong ttl = 1800000);
