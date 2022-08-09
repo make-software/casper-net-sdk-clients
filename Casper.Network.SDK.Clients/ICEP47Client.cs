@@ -19,6 +19,8 @@ namespace Casper.Network.SDK.Clients
 
         Task<bool> SetContractHash(GlobalStateKey contractHash, bool skipNamedkeysQuery=false);
 
+        bool SetContractPackageHash(GlobalStateKey contractPackageHash, uint? contractVersion, bool skipNamedkeysQuery=false);
+
         DeployHelper InstallContract(byte[] wasmBytes,
             string contractName,
             string name,

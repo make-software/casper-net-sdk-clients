@@ -116,6 +116,45 @@ namespace Casper.Network.SDK.Clients
             return result.ToBigInteger();
         }
 
+        private DeployHelper BuildDeployHelper(string entryPoint,
+            List<NamedArg> namedArgs,
+            PublicKey senderPk,
+            BigInteger paymentMotes,
+            ulong ttl = 1800000)
+        {
+            if (ContractHash != null)
+            {
+                var deploy = DeployTemplates.ContractCall(ContractHash,
+                    entryPoint,
+                    namedArgs,
+                    senderPk,
+                    paymentMotes,
+                    ChainName,
+                    DEFAULT_GAS_PRICE,
+                    ttl);
+
+                return new DeployHelper(deploy, CasperClient, _processDeployResult);
+            }
+
+            if (ContractPackageHash != null)
+            {
+                var deploy = DeployTemplates.VersionedContractCall(ContractPackageHash,
+                    ContractVersion, // use 'null' to call latest version
+                    entryPoint,
+                    namedArgs,
+                    senderPk,
+                    paymentMotes,
+                    ChainName,
+                    DEFAULT_GAS_PRICE,
+                    ttl);
+
+                return new DeployHelper(deploy, CasperClient, _processDeployResult);
+            }
+
+            throw new Exception(
+                "Neither Contract nor ContractPackage hashes are available. Check object initialization.");
+        }
+
         public DeployHelper MintOne(PublicKey senderPk,
             GlobalStateKey recipientKey,
             BigInteger? tokenId,
@@ -161,16 +200,11 @@ namespace Casper.Network.SDK.Clients
 
             namedArgs.Add(new("token_metas", clMetas));
 
-            var deploy = DeployTemplates.ContractCall(ContractHash,
-                "mint",
-                namedArgs,
-                senderPk,
-                paymentMotes,
-                ChainName,
-                DEFAULT_GAS_PRICE,
-                ttl);
-
-            return new DeployHelper(deploy, CasperClient, _processDeployResult);
+            return BuildDeployHelper("mint",
+                    namedArgs,
+                    senderPk,
+                    paymentMotes,
+                    ttl);
         }
 
         public DeployHelper MintCopies(PublicKey ownerPK,
@@ -185,7 +219,7 @@ namespace Casper.Network.SDK.Clients
                 new NamedArg("recipient", CLValue.Key(recipientKey)),
                 new NamedArg("count", (uint) tokenIds.Count),
             };
-            
+
             // create a list of U256 for the token ids
             //
             if (tokenIds != null)
@@ -198,17 +232,12 @@ namespace Casper.Network.SDK.Clients
                 dict.Add(kvp.Key, kvp.Value);
 
             namedArgs.Add(new("token_metas", CLValue.Map(dict)));
-            
-            var deploy = DeployTemplates.ContractCall(ContractHash,
-                "mint_copies",
+
+            return BuildDeployHelper("mint_copies",
                 namedArgs,
                 ownerPK,
                 paymentMotes,
-                ChainName,
-                DEFAULT_GAS_PRICE,
                 ttl);
-
-            return new DeployHelper(deploy, CasperClient, _processDeployResult);
         }
 
         public DeployHelper TransferToken(PublicKey ownerPk,
@@ -219,8 +248,7 @@ namespace Casper.Network.SDK.Clients
         {
             var clTokenIds = CLValue.List(tokenIds.Select(t => CLValue.U256(t)).ToArray());
 
-            var deploy = DeployTemplates.ContractCall(ContractHash,
-                "transfer",
+            return BuildDeployHelper("transfer",
                 new List<NamedArg>()
                 {
                     new NamedArg("recipient", CLValue.Key(recipientKey)),
@@ -228,11 +256,7 @@ namespace Casper.Network.SDK.Clients
                 },
                 ownerPk,
                 paymentMotes,
-                ChainName,
-                DEFAULT_GAS_PRICE,
                 ttl);
-
-            return new DeployHelper(deploy, CasperClient, _processDeployResult);
         }
 
         public DeployHelper Approve(PublicKey ownerPk,
@@ -243,8 +267,7 @@ namespace Casper.Network.SDK.Clients
         {
             var clTokenIds = CLValue.List(tokenIds.Select(t => CLValue.U256(t)).ToArray());
 
-            var deploy = DeployTemplates.ContractCall(ContractHash,
-                "approve",
+            return BuildDeployHelper("approve",
                 new List<NamedArg>()
                 {
                     new NamedArg("spender", CLValue.Key(spenderKey)),
@@ -252,11 +275,7 @@ namespace Casper.Network.SDK.Clients
                 },
                 ownerPk,
                 paymentMotes,
-                ChainName,
-                DEFAULT_GAS_PRICE,
                 ttl);
-
-            return new DeployHelper(deploy, CasperClient, _processDeployResult);
         }
 
         public DeployHelper TransferTokenFrom(PublicKey spenderPk,
@@ -268,8 +287,7 @@ namespace Casper.Network.SDK.Clients
         {
             var clTokenIds = CLValue.List(tokenIds.Select(t => CLValue.U256(t)).ToArray());
 
-            var deploy = DeployTemplates.ContractCall(ContractHash,
-                "transfer_from",
+            return BuildDeployHelper("transfer_from",
                 new List<NamedArg>()
                 {
                     new NamedArg("sender", CLValue.Key(ownerKey)),
@@ -278,11 +296,7 @@ namespace Casper.Network.SDK.Clients
                 },
                 spenderPk,
                 paymentMotes,
-                ChainName,
-                DEFAULT_GAS_PRICE,
                 ttl);
-
-            return new DeployHelper(deploy, CasperClient, _processDeployResult);
         }
 
         private string key_and_value_to_str(GlobalStateKey key, BigInteger value)
@@ -441,8 +455,7 @@ namespace Casper.Network.SDK.Clients
             foreach (var kvp in meta)
                 dict.Add(kvp.Key, kvp.Value);
 
-            var deploy = DeployTemplates.ContractCall(ContractHash,
-                "update_token_meta",
+            return BuildDeployHelper("update_token_meta",
                 new List<NamedArg>()
                 {
                     new NamedArg("token_id", tokenId),
@@ -450,11 +463,7 @@ namespace Casper.Network.SDK.Clients
                 },
                 senderPk,
                 paymentMotes,
-                ChainName,
-                DEFAULT_GAS_PRICE,
                 ttl);
-
-            return new DeployHelper(deploy, CasperClient, _processDeployResult);
         }
 
         public DeployHelper BurnOne(PublicKey senderPk,
@@ -480,8 +489,7 @@ namespace Casper.Network.SDK.Clients
             //
             var clTokenIds = CLValue.List(tokenIds.Select(t => CLValue.U256(t)).ToArray());
 
-            var deploy = DeployTemplates.ContractCall(ContractHash,
-                "burn",
+            return BuildDeployHelper("burn",
                 new List<NamedArg>()
                 {
                     new NamedArg("owner", CLValue.Key(ownerKey)),
@@ -489,11 +497,7 @@ namespace Casper.Network.SDK.Clients
                 },
                 senderPk,
                 paymentMotes,
-                ChainName,
-                DEFAULT_GAS_PRICE,
                 ttl);
-
-            return new DeployHelper(deploy, CasperClient, _processDeployResult);
         }
     }
 

@@ -16,6 +16,10 @@ namespace Casper.Network.SDK.Clients
         protected readonly ICasperClient CasperClient;
 
         public HashKey ContractHash { get; protected set; }
+        
+        public HashKey ContractPackageHash { get; protected set; }
+
+        public uint? ContractVersion { get; protected set; }
 
         protected ClientBase(ICasperClient casperClient, string chainName)
         {
@@ -63,5 +67,17 @@ namespace Casper.Network.SDK.Clients
         }
 
         public abstract Task<bool> SetContractHash(GlobalStateKey contractHash, bool skipNamedkeysQuery=false);
+
+        public bool SetContractPackageHash(GlobalStateKey contractPackageHash, uint? contractVersion, bool skipNamedkeysQuery = false)
+        {
+            if (skipNamedkeysQuery == false)
+                throw new NotImplementedException(
+                    "SetContractPackageHash is only allowed with skipNamedKeysQuery=true");
+
+            ContractPackageHash = contractPackageHash as HashKey;
+            ContractVersion = contractVersion;
+            
+            return true;
+        }
     }
 }
