@@ -45,7 +45,7 @@ namespace Casper.Network.SDK.Clients
                 var executionResult = result.ExecutionResults.FirstOrDefault();
                 if (executionResult is null)
                     throw new ContractException("ExecutionResults null for processed deploy.",
-                        (long) ERC20ClientErrors.GenericError);
+                        (long) ERC20ClientErrors.OtherError);
 
                 if (executionResult.IsSuccess)
                     return;
@@ -60,7 +60,7 @@ namespace Casper.Network.SDK.Clients
                         (long) ERC20ClientErrors.InsufficientAllowance);
 
                 throw new ContractException("Deploy not executed. " + executionResult.ErrorMessage,
-                    (long) ERC20ClientErrors.GenericError);
+                    (long) ERC20ClientErrors.OtherError);
             };
         }
 
@@ -328,7 +328,7 @@ namespace Casper.Network.SDK.Clients
         InsufficientBalance = UInt16.MaxValue - 1,
         InsufficientAllowance = UInt16.MaxValue - 2,
         Overflow = UInt16.MaxValue - 3,
-        GenericError = UInt16.MaxValue - 100,
+        OtherError = UInt16.MaxValue - 100,
         AccountNotValid = UInt16.MaxValue - 101,
         UnknownAccount = UInt16.MaxValue - 102,
         ContractNotFound = UInt16.MaxValue - 103

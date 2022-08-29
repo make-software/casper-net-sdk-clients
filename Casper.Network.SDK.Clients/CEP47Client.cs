@@ -40,7 +40,7 @@ namespace Casper.Network.SDK.Clients
                 var executionResult = result.ExecutionResults.FirstOrDefault();
                 if (executionResult is null)
                     throw new ContractException("ExecutionResults null for processed deploy.",
-                        (long) ERC20ClientErrors.GenericError);
+                        (long) ERC20ClientErrors.OtherError);
 
                 if (executionResult.IsSuccess)
                     return;
@@ -62,7 +62,7 @@ namespace Casper.Network.SDK.Clients
                         (long) CEP47ClientErrors.TokenIdDoesntExist);
 
                 throw new ContractException("Deploy not executed. " + executionResult.ErrorMessage,
-                    (long) CEP47ClientErrors.GenericError);
+                    (long) CEP47ClientErrors.OtherError);
             };
         }
 
@@ -639,7 +639,7 @@ namespace Casper.Network.SDK.Clients
     /// </summary>
     public enum CEP47ClientErrors
     {
-        GenericError = 0,
+        OtherError = 0,
         PermissionDenied = 1,
         WrongArguments = 2,
         TokenIdAlreadyExists = 3,
