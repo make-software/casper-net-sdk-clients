@@ -10,7 +10,7 @@
         <PackageProjectUrl>https://github.com/make-software/casper-net-sdk-clients</PackageProjectUrl>
         <RepositoryUrl>https://github.com/make-software/casper-net-sdk-clients</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
-        <PackageTags>Casper Clients</PackageTags>
+        <PackageTags>Casper Contracts Clients</PackageTags>
         <PackageReadmeFile>README_nuget.md</PackageReadmeFile>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <Description>
@@ -23,4 +23,9 @@
       <PackageReference Include="Casper.Network.SDK" Version="1.1.0" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Include="README_nuget.md" Pack="true" PackagePath="\" />
+      <None Include="..\LICENSE" Pack="true" PackagePath="\" />
+    </ItemGroup>
+    
 </Project>
