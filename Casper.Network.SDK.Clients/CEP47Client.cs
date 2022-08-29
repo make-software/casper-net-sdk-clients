@@ -12,17 +12,66 @@ namespace Casper.Network.SDK.Clients
 {
     public partial class CEP47Client : ClientBase, ICEP47Client
     {
+        /// <summary>
+        /// Name of the CEP47 token
+        /// </summary>
         public string Name { get; private set; }
 
+        /// <summary>
+        /// Symbol of the CEP47 token
+        /// </summary>
         public string Symbol { get; private set; }
 
+        /// <summary>
+        /// Metadata of the CEP47 token
+        /// </summary>
         public Dictionary<string, string> Meta { get; private set; }
 
+        /// <summary>
+        /// Constructor of the client. Call SetContractHash or SetContractPackageHash before any other method. 
+        /// </summary>
+        /// <param name="casperClient">A valid ICasperClient object.</param>
+        /// <param name="chainName">Name of the network being used.</param>
         public CEP47Client(ICasperClient casperClient, string chainName)
             : base(casperClient, chainName)
         {
+            ProcessDeployResult = result =>
+            {
+                var executionResult = result.ExecutionResults.FirstOrDefault();
+                if (executionResult is null)
+                    throw new ContractException("ExecutionResults null for processed deploy.",
+                        (long) ERC20ClientErrors.GenericError);
+
+                if (executionResult.IsSuccess)
+                    return;
+
+                if (executionResult.ErrorMessage.Contains("User error: 1"))
+                    throw new ContractException("Deploy not executed. Permission denied",
+                        (long) CEP47ClientErrors.PermissionDenied);
+
+                if (executionResult.ErrorMessage.Contains("User error: 2"))
+                    throw new ContractException("Deploy not executed. Wrong arguments",
+                        (long) CEP47ClientErrors.WrongArguments);
+
+                if (executionResult.ErrorMessage.Contains("User error: 3"))
+                    throw new ContractException("Deploy not executed. Token Id already exists",
+                        (long) CEP47ClientErrors.TokenIdAlreadyExists);
+
+                if (executionResult.ErrorMessage.Contains("User error: 4"))
+                    throw new ContractException("Deploy not executed. Token Id doesn't exist",
+                        (long) CEP47ClientErrors.TokenIdDoesntExist);
+
+                throw new ContractException("Deploy not executed. " + executionResult.ErrorMessage,
+                    (long) CEP47ClientErrors.GenericError);
+            };
         }
 
+        /// <summary>
+        /// Sets the contract hash to use for all calls to the contract
+        /// </summary>
+        /// <param name="contractHash">A valid Contract hash.</param>
+        /// <param name="skipNamedkeysQuery">Set this to true to skip the retrieval of the default named keys during initialization.</param>
+        /// <returns>False in case of an error retrieving the contract named keys. True otherwise.</returns>
         public override async Task<bool> SetContractHash(GlobalStateKey contractHash, bool skipNamedkeysQuery = false)
         {
             ContractHash = contractHash as HashKey;
@@ -42,6 +91,18 @@ namespace Casper.Network.SDK.Clients
             return true;
         }
 
+        /// <summary>
+        /// Prepares a Deploy to make a new install of the CEP47 contract with the given details.
+        /// </summary>
+        /// <param name="wasmBytes">Contract to deploy in WASM format.</param>
+        /// <param name="contractName">Name of the CEP47 contract (stored as a named key in the caller account).</param>
+        /// <param name="name">Name of the CEP47 token.</param>
+        /// <param name="symbol">Symbol of the CEP47 contract.</param>
+        /// <param name="meta">Dictionary with the metadata of the CEP47 contract.</param>
+        /// <param name="accountPK">Caller account and owner of the contract.</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper InstallContract(byte[] wasmBytes,
             string contractName,
             string name,
@@ -77,84 +138,28 @@ namespace Casper.Network.SDK.Clients
 
             var deploy = new Deploy(header, payment, session);
 
-            return new DeployHelper(deploy, CasperClient, _processDeployResult);
+            return new DeployHelper(deploy, CasperClient, ProcessDeployResult);
         }
 
-        private ProcessDeployResult _processDeployResult = result =>
-        {
-            var executionResult = result.ExecutionResults.FirstOrDefault();
-            if (executionResult is null)
-                throw new ContractException("ExecutionResults null for processed deploy.",
-                    (long) ERC20ClientErrors.GenericError);
-
-            if (executionResult.IsSuccess)
-                return;
-
-            if (executionResult.ErrorMessage.Contains("User error: 1"))
-                throw new ContractException("Deploy not executed. Permission denied",
-                    (long) CEP47ClientErrors.PermissionDenied);
-
-            if (executionResult.ErrorMessage.Contains("User error: 2"))
-                throw new ContractException("Deploy not executed. Wrong arguments",
-                    (long) CEP47ClientErrors.WrongArguments);
-
-            if (executionResult.ErrorMessage.Contains("User error: 3"))
-                throw new ContractException("Deploy not executed. Token Id already exists",
-                    (long) CEP47ClientErrors.TokenIdAlreadyExists);
-
-            if (executionResult.ErrorMessage.Contains("User error: 4"))
-                throw new ContractException("Deploy not executed. Token Id doesn't exist",
-                    (long) CEP47ClientErrors.TokenIdDoesntExist);
-
-            throw new ContractException("Deploy not executed. " + executionResult.ErrorMessage,
-                (long) CEP47ClientErrors.GenericError);
-        };
-
+        /// <summary>
+        /// Gets the number of tokens in circulation.
+        /// </summary>
         public async Task<BigInteger> GetTotalSupply()
         {
             var result = await GetNamedKey<CLValue>("total_supply");
             return result.ToBigInteger();
         }
 
-        private DeployHelper BuildDeployHelper(string entryPoint,
-            List<NamedArg> namedArgs,
-            PublicKey senderPk,
-            BigInteger paymentMotes,
-            ulong ttl = 1800000)
-        {
-            if (ContractHash != null)
-            {
-                var deploy = DeployTemplates.ContractCall(ContractHash,
-                    entryPoint,
-                    namedArgs,
-                    senderPk,
-                    paymentMotes,
-                    ChainName,
-                    DEFAULT_GAS_PRICE,
-                    ttl);
-
-                return new DeployHelper(deploy, CasperClient, _processDeployResult);
-            }
-
-            if (ContractPackageHash != null)
-            {
-                var deploy = DeployTemplates.VersionedContractCall(ContractPackageHash,
-                    ContractVersion, // use 'null' to call latest version
-                    entryPoint,
-                    namedArgs,
-                    senderPk,
-                    paymentMotes,
-                    ChainName,
-                    DEFAULT_GAS_PRICE,
-                    ttl);
-
-                return new DeployHelper(deploy, CasperClient, _processDeployResult);
-            }
-
-            throw new Exception(
-                "Neither Contract nor ContractPackage hashes are available. Check object initialization.");
-        }
-
+        /// <summary>
+        /// Prepares a Deploy to mint a new token. 
+        /// </summary>
+        /// <param name="senderPk">Caller account.</param>
+        /// <param name="recipientKey">Recipient and owner of the new token.</param>
+        /// <param name="tokenId">Token identifier. </param>
+        /// <param name="meta">Metadata of the token.</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper MintOne(PublicKey senderPk,
             GlobalStateKey recipientKey,
             BigInteger? tokenId,
@@ -169,6 +174,16 @@ namespace Casper.Network.SDK.Clients
                 ttl);
         }
 
+        /// <summary>
+        /// Prepares a Deploy to mint several tokens in one call.
+        /// </summary>
+        /// <param name="senderPk">Caller account.</param>
+        /// <param name="recipientKey">Recipient and owner of the new token.</param>
+        /// <param name="tokenIds">List of token identifiers.</param>
+        /// <param name="metas">List of token metadatas (one dictionary per token).</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper MintMany(PublicKey senderPk,
             GlobalStateKey recipientKey,
             List<BigInteger> tokenIds,
@@ -207,6 +222,16 @@ namespace Casper.Network.SDK.Clients
                     ttl);
         }
 
+        /// <summary>
+        /// Prepares a Deploy to mint several tokens in one call with the same metadata.
+        /// </summary>
+        /// <param name="ownerPK">Caller account.</param>
+        /// <param name="recipientKey">Recipient and owner of the new tokens.</param>
+        /// <param name="tokenIds">List of token identifiers.</param>
+        /// <param name="meta">Metadata of the token (same for all copies).</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper MintCopies(PublicKey ownerPK,
             GlobalStateKey recipientKey,
             List<BigInteger> tokenIds,
@@ -231,7 +256,7 @@ namespace Casper.Network.SDK.Clients
             foreach (var kvp in meta)
                 dict.Add(kvp.Key, kvp.Value);
 
-            namedArgs.Add(new("token_metas", CLValue.Map(dict)));
+            namedArgs.Add(new("token_meta", CLValue.Map(dict)));
 
             return BuildDeployHelper("mint_copies",
                 namedArgs,
@@ -240,6 +265,15 @@ namespace Casper.Network.SDK.Clients
                 ttl);
         }
 
+        /// <summary>
+        /// Prepares a Deploy to transfer a token to a recipient account.
+        /// </summary>
+        /// <param name="ownerPk">Caller account and owner of the tokens being sent.</param>
+        /// <param name="recipientKey">Recipient account and new owner of the tokens after the execution of the deploy.</param>
+        /// <param name="tokenIds">List of token identifiers to send to the recipient.</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper TransferToken(PublicKey ownerPk,
             GlobalStateKey recipientKey,
             List<BigInteger> tokenIds,
@@ -259,6 +293,15 @@ namespace Casper.Network.SDK.Clients
                 ttl);
         }
 
+        /// <summary>
+        /// Prepares a Deploy to approve a spender to make transfers of tokens on behalf of the owner.
+        /// </summary>
+        /// <param name="ownerPk">Caller account and owner of the tokens being approved for transfer.</param>
+        /// <param name="spenderKey">The account that is being approved to transfer tokens from the owner.</param>
+        /// <param name="tokenIds">List of token identifiers being approved for transfer.</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper Approve(PublicKey ownerPk,
             GlobalStateKey spenderKey,
             List<BigInteger> tokenIds,
@@ -278,6 +321,16 @@ namespace Casper.Network.SDK.Clients
                 ttl);
         }
 
+        /// <summary>
+        /// Prepares a Deploy to transfer tokens to a recipient on behalf of the tokens owner. 
+        /// </summary>
+        /// <param name="senderPk">Caller account and approved spender.</param>
+        /// <param name="ownerKey">Owner of the tokens being sent.</param>
+        /// <param name="recipientKey">Recipient account and new owner of the tokens after the execution of the deploy.</param>
+        /// <param name="tokenIds">List of token identifiers to send to the recipient.</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper TransferTokenFrom(PublicKey spenderPk,
             GlobalStateKey ownerKey,
             GlobalStateKey recipientKey,
@@ -313,8 +366,19 @@ namespace Casper.Network.SDK.Clients
             return Hex.ToHexString(hash);
         }
 
+        /// <summary>
+        /// Retrieves the token identifier given an index or position in the owner's token list.
+        /// </summary>
+        /// <param name="ownerKey">Owner's account</param>
+        /// <param name="index">index or position in the owner's token list (from 0 to n-1).</param>
+        /// <returns>A token Id or an exception with code TokenIdDoesntExist if the index is out of range.</returns>
         public async Task<BigInteger?> GetTokenIdByIndex(GlobalStateKey ownerKey, uint index)
         {
+            if (ContractHash is null)
+                throw new ContractException(
+                    "Initialize the contract client with a ContractHash to query the contract keys.",
+                    (long) CEP47ClientErrors.ContractNotFound);
+            
             try
             {
                 var dictItem = key_and_value_to_str(ownerKey, new BigInteger(index));
@@ -338,8 +402,18 @@ namespace Casper.Network.SDK.Clients
             return null;
         }
 
+        /// <summary>
+        /// Retrieves the token metadata.
+        /// </summary>
+        /// <param name="tokenId">The token identifier.</param>
+        /// <returns>A dictionary with the token metadata or an exception with code TokenIdDoesntExist if the token does not exist.</returns>
         public async Task<Dictionary<string, string>> GetTokenMetadata(BigInteger tokenId)
         {
+            if (ContractHash is null)
+                throw new ContractException(
+                    "Initialize the contract client with a ContractHash to query the contract keys.",
+                    (long) CEP47ClientErrors.ContractNotFound);
+            
             try
             {
                 var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
@@ -362,8 +436,18 @@ namespace Casper.Network.SDK.Clients
             return null;
         }
 
+        /// <summary>
+        /// Gets the account hash of the owner of a token.
+        /// </summary>
+        /// <param name="tokenId">The token identifier.</param>
+        /// <returns>An account hash or an exception with code TokenIdDoesntExist if the index is out of range.</returns>
         public async Task<GlobalStateKey> GetOwnerOf(BigInteger tokenId)
         {
+            if (ContractHash is null)
+                throw new ContractException(
+                    "Initialize the contract client with a ContractHash to query the contract keys.",
+                    (long) CEP47ClientErrors.ContractNotFound);
+            
             try
             {
                 var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
@@ -386,8 +470,18 @@ namespace Casper.Network.SDK.Clients
             return null;
         }
 
+        /// <summary>
+        /// Gets the number of tokens owned by an account.
+        /// </summary>
+        /// <param name="ownerKey">Account hash of the owner being queried.</param>
+        /// <returns>The number of tokens owned by the account or an exception with code UnknownAccount if the account is not known.</returns>
         public async Task<BigInteger?> GetBalanceOf(GlobalStateKey ownerKey)
         {
+            if (ContractHash is null)
+                throw new ContractException(
+                    "Initialize the contract client with a ContractHash to query the contract keys.",
+                    (long) CEP47ClientErrors.ContractNotFound);
+            
             try
             {
                 var response = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
@@ -411,8 +505,20 @@ namespace Casper.Network.SDK.Clients
             return null;
         }
 
+        /// <summary>
+        /// Gets the account hash of an approved spender for a given token
+        /// </summary>
+        /// <param name="ownerKey">Account hash of the owner.</param>
+        /// <param name="tokenId">Token identifier.</param>
+        /// <returns>The account hash of an approved spender, null if no spender approved or an exception with
+        /// TokenIdDoesntExist if the token identifeier doesn't exist.</returns>
         public async Task<GlobalStateKey> GetApprovedSpender(GlobalStateKey ownerKey, BigInteger tokenId)
         {
+            if (ContractHash is null)
+                throw new ContractException(
+                    "Initialize the contract client with a ContractHash to query the contract keys.",
+                    (long) CEP47ClientErrors.ContractNotFound);
+            
             var bcBl2bdigest = new Org.BouncyCastle.Crypto.Digests.Blake2bDigest(256);
             bcBl2bdigest.BlockUpdate(ownerKey.GetBytes(), 0, ownerKey.GetBytes().Length);
 
@@ -445,6 +551,15 @@ namespace Casper.Network.SDK.Clients
             return null;
         }
 
+        /// <summary>
+        /// Updates the metadata of a token.
+        /// </summary>
+        /// <param name="senderPk">Caller and owner of the token being updated.</param>
+        /// <param name="tokenId">Token identifier.</param>
+        /// <param name="meta">New metadata of the token.</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper UpdateTokenMetadata(PublicKey senderPk,
             BigInteger tokenId,
             Dictionary<string, string> meta,
@@ -466,6 +581,15 @@ namespace Casper.Network.SDK.Clients
                 ttl);
         }
 
+        /// <summary>
+        /// Burns one token.
+        /// </summary>
+        /// <param name="senderPk">Caller account (owner or spender) of the token being burned.</param>
+        /// <param name="ownerKey">Owner account of the token.</param>
+        /// <param name="tokenId">Token identifier.</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper BurnOne(PublicKey senderPk,
             GlobalStateKey ownerKey,
             BigInteger tokenId,
@@ -479,6 +603,15 @@ namespace Casper.Network.SDK.Clients
                 ttl);
         }
 
+        /// <summary>
+        /// Burns a list of tokens
+        /// </summary>
+        /// <param name="senderPk">Caller account (owner or spender) of the tokens being burned.</param>
+        /// <param name="ownerKey">Owner account of the tokens.</param>
+        /// <param name="tokenIds">List of token identifiers.</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper BurnMany(PublicKey senderPk,
             GlobalStateKey ownerKey,
             List<BigInteger> tokenIds,
@@ -501,6 +634,9 @@ namespace Casper.Network.SDK.Clients
         }
     }
 
+    /// <summary>
+    /// Enumeration with common CEP47 related errors that can be returned by the CEP47 client.
+    /// </summary>
     public enum CEP47ClientErrors
     {
         GenericError = 0,
@@ -508,6 +644,7 @@ namespace Casper.Network.SDK.Clients
         WrongArguments = 2,
         TokenIdAlreadyExists = 3,
         TokenIdDoesntExist = 4,
-        UnknownAccount = 100
+        UnknownAccount = 102,
+        ContractNotFound = 103
     }
 }

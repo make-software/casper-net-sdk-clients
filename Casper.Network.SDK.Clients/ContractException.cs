@@ -2,6 +2,9 @@
 
 namespace Casper.Network.SDK.Clients
 {
+    /// <summary>
+    /// Represents errors related with the communication or the execution of the contract. 
+    /// </summary>
     public class ContractException : Exception
     {
         public long Code { get; }

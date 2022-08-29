@@ -10,8 +10,8 @@ namespace Casper.Network.SDK.Clients.Test
 {
     public class ERC20ClientTest
     {
+        private const string CHAIN_NAME = "casper-net-1";
         private string _nodeAddress;
-        private string _chainName = "casper-net-1";
         private string _erc20WasmFile;
         
         private KeyPair _ownerAccount;
@@ -23,6 +23,7 @@ namespace Casper.Network.SDK.Clients.Test
         private GlobalStateKey _user2AccountKey;
 
         private HashKey _contractHash;
+        private HashKey _contractPackageHash;
         private ERC20Client _erc20Client;
 
         private const string TOKEN_NAME = ".NET SDK";
@@ -64,7 +65,7 @@ namespace Casper.Network.SDK.Clients.Test
         [Test, Order(1)]
         public async Task InstallContractTest()
         {
-            var client = new ERC20Client(new NetCasperClient(_nodeAddress), _chainName);
+            var client = new ERC20Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
 
             var wasmBytes = File.ReadAllBytes(TestContext.CurrentContext.TestDirectory +
                                               "/TestData/" + _erc20WasmFile);
@@ -91,12 +92,13 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.AreEqual(69, deployHelper.ContractPackageHash.ToString().Length);
 
             _contractHash = deployHelper.ContractHash;
+            _contractPackageHash = deployHelper.ContractPackageHash;
         }
 
         [Test, Order(2)]
         public async Task SetContractHashFromPKTest()
         {
-            _erc20Client = new ERC20Client(new NetCasperClient(_nodeAddress), _chainName);
+            _erc20Client = new ERC20Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
 
             var b = await _erc20Client.SetContractHash(_ownerAccount.PublicKey, "erc20_token_contract");
             Assert.IsTrue(b);
@@ -122,7 +124,7 @@ namespace Casper.Network.SDK.Clients.Test
         public async Task SetContractHashTest()
         {
             Assert.IsNotNull(_contractHash, "This test must run after InstallContractTest");
-            var client = new ERC20Client(new NetCasperClient(_nodeAddress), _chainName);
+            var client = new ERC20Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
 
             var b = await client.SetContractHash(_contractHash.ToString());
             Assert.IsTrue(b);
@@ -137,11 +139,28 @@ namespace Casper.Network.SDK.Clients.Test
         }
 
         [Test, Order(3)]
+        public void SetContractPackageHashTest()
+        {
+            Assert.IsNotNull(_contractPackageHash, "This test must run after InstallContractTest");
+            var client = new ERC20Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
+
+            var b = client.SetContractPackageHash(_contractPackageHash, null, true);
+            Assert.IsTrue(b);
+
+            var ex = Assert.Catch(() => client.SetContractPackageHash(_contractPackageHash, null, false));
+            Assert.IsNotNull(ex);
+        }
+
+        [Test, Order(3)]
         public async Task TransferTokensTest()
         {
-            Assert.IsNotNull(_erc20Client, "This test must run after SetContractHashTest");
-
-            var deployHelper = _erc20Client.TransferTokens(_ownerAccount.PublicKey,
+            Assert.IsNotNull(_contractPackageHash, "This test must run after InstallContractTest");
+            var client = new ERC20Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
+            
+            var b = client.SetContractPackageHash(_contractPackageHash, null, true);
+            Assert.IsTrue(b);
+            
+            var deployHelper = client.TransferTokens(_ownerAccount.PublicKey,
                 _user2AccountKey,
                 10_000,
                 1_000_000_000);
@@ -318,6 +337,24 @@ namespace Casper.Network.SDK.Clients.Test
 
             Assert.IsNotNull(ex);
             Assert.AreEqual((long)ERC20ClientErrors.InsufficientAllowance, ex.Code);
+        }
+
+        [Test, Order(7)]
+        public void CatchContractHashNotSetTest()
+        {
+            Assert.IsNotNull(_contractPackageHash, "This test must run after InstallContractTest");
+            var client = new ERC20Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
+            
+            var b = client.SetContractPackageHash(_contractPackageHash, null, true);
+            Assert.IsTrue(b);
+
+            var ex = Assert.CatchAsync(() => client.GetBalance(_ownerAccountKey));
+            Assert.IsNotNull(ex);
+            Assert.IsTrue(ex.Message.Contains("Initialize the contract client"));
+            
+            ex = Assert.CatchAsync(() => client.GetAllowance(_ownerAccountKey, _user1AccountKey));
+            Assert.IsNotNull(ex);
+            Assert.IsTrue(ex.Message.Contains("Initialize the contract client"));
         }
     }
 }

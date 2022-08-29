@@ -25,6 +25,7 @@ namespace Casper.Network.SDK.Clients.Test
         private GlobalStateKey _user2AccountKey;
 
         private HashKey _contractHash;
+        private HashKey _contractPackageHash;
         private CEP47Client _cep47Client;
 
         private const string TOKEN_NAME = "DragonsNFT";
@@ -97,6 +98,7 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.AreEqual(69, deployHelper.ContractPackageHash.ToString().Length);
 
             _contractHash = deployHelper.ContractHash;
+            _contractPackageHash = deployHelper.ContractPackageHash;
         }
 
         [Test, Order(2)]
@@ -151,11 +153,24 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.IsNotNull(client.ContractHash);
             Assert.AreEqual(_contractHash.ToString(), client.ContractHash.ToString());
         }
+        
+        [Test, Order(3)]
+        public void SetContractPackageHashTest()
+        {
+            Assert.IsNotNull(_contractPackageHash, "This test must run after InstallContractTest");
+            var client = new CEP47Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
+
+            var b = client.SetContractPackageHash(_contractPackageHash, null, true);
+            Assert.IsTrue(b);
+
+            var ex = Assert.Catch(() => client.SetContractPackageHash(_contractPackageHash, null, false));
+            Assert.IsNotNull(ex);
+        }
 
         [Test, Order(3)]
         public async Task MintOneTest()
         {
-            Assert.IsNotNull(_cep47Client, "This test must run after SetContractHashTest");
+            Assert.IsNotNull(_cep47Client, "This test must run after SetContractHashFromPKTest");
 
             var tokenMeta = new Dictionary<string, string>
             {
@@ -180,36 +195,23 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.IsTrue(deployHelper.IsSuccess);
             Assert.IsNotNull(deployHelper.ExecutionResult);
             Assert.IsTrue(deployHelper.ExecutionResult.Cost > 0);
-            
-            deployHelper = _cep47Client.MintOne(_ownerAccount.PublicKey,
-                _user2AccountKey,
-                new BigInteger(1),
-                tokenMeta,
-                1_000_000_000);
-
-            Assert.IsNotNull(deployHelper);
-            Assert.IsNotNull(deployHelper.Deploy);
-
-            deployHelper.Sign(_ownerAccount);
-
-            await deployHelper.PutDeploy();
-
-            var ex = Assert.CatchAsync<ContractException>(async () => await deployHelper.WaitDeployProcess());
-            Assert.IsNotNull(ex);
-            Assert.AreEqual((long)CEP47ClientErrors.TokenIdAlreadyExists, ex.Code);
         }
 
         [Test, Order(4)]
         public async Task CatchTokenIdAlreadyExistsTest()
         {
-            Assert.IsNotNull(_cep47Client, "This test must run after SetContractHashTest");
+            Assert.IsNotNull(_contractPackageHash, "This test must run after InstallContractTest");
+            var client = new CEP47Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
 
+            var b = client.SetContractPackageHash(_contractPackageHash, null, true);
+            Assert.IsTrue(b);
+            
             var tokenMeta = new Dictionary<string, string>
             {
                 {"color", "green"}
             };
 
-            var deployHelper = _cep47Client.MintOne(_ownerAccount.PublicKey,
+            var deployHelper = client.MintOne(_ownerAccount.PublicKey,
                 _user2AccountKey,
                 new BigInteger(1),
                 tokenMeta,
