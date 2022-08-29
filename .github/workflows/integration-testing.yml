@@ -21,6 +21,7 @@ jobs:
         image: makesoftware/casper-nctl:latest
         options: --name casper-nctl
         env:
+          PREDEFINED_ACCOUNTS: 'true'
           DEPLOY_DELAY: '5sec'          
         ports:
           # Opens RPC, REST and events ports on the host and service container
