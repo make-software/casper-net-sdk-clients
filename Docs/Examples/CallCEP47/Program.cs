@@ -5,6 +5,7 @@ using System.Numerics;
 using System.Threading.Tasks;
 using Casper.Network.SDK;
 using Casper.Network.SDK.Clients;
+using Casper.Network.SDK.SSE;
 using Casper.Network.SDK.Types;
 
 namespace CallCEP47
@@ -37,13 +38,26 @@ namespace CallCEP47
                 Console.WriteLine("CEP47 contract symbol: " + cep47Client.Symbol);
                 
                 var k = await cep47Client.GetTotalSupply();
-                Console.WriteLine("CEP47 total supply. " + k);
+                Console.WriteLine("CEP47 total supply: " + k);
             }
             catch (ContractException e)
             {
                 Console.WriteLine(e.Message);
                 return;
             }
+            
+            //
+            // listen to CEP47 events
+            //
+            var localNetHost = "127.0.0.1";
+            var localNetPort = 18101;
+            var sseClient = new ServerEventsClient(localNetHost, localNetPort);
+
+            var events = new List<CEP47Event>();
+
+            cep47Client.OnCEP47Event += evt => events.Add(evt);
+            
+            await cep47Client.ListenToEvents(sseClient);
             
             //
             // Mint first token
@@ -146,6 +160,19 @@ namespace CallCEP47
             catch (ContractException e)
             {
                 Console.WriteLine(e);
+            }
+            
+            //
+            // print captured events
+            //
+            Console.WriteLine();
+            Console.WriteLine("Captured events:");
+            foreach (var evt in events)
+            {
+                Console.WriteLine("  CEP47 event:");
+                Console.WriteLine("    " + evt.EventType + " - TokenId: " + evt.TokenId);
+                Console.WriteLine("    Sender   : " + evt.Sender);
+                Console.WriteLine("    Recipient: " + evt.Recipient);
             }
         }
     }

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Casper.Network.SDK.SSE;
@@ -6,6 +7,9 @@ using Casper.Network.SDK.Types;
 
 namespace Casper.Network.SDK.Clients
 {
+    /// <summary>
+    /// Enumeration with the possible events received from the CEP47 contract
+    /// </summary>
     public enum CEP47EventType
     {
         Unknown,
@@ -16,6 +20,9 @@ namespace Casper.Network.SDK.Clients
         UpdateMetadata
     }
 
+    /// <summary>
+    /// Represents a CEP47 event emitted by the contract upon execution of an operation 
+    /// </summary>
     public class CEP47Event
     {
         public CEP47EventType EventType { get; init; }
@@ -30,23 +37,33 @@ namespace Casper.Network.SDK.Clients
 
     public partial class CEP47Client
     {
-        private GlobalStateKey _contractPackageHash;
-
         public delegate void EventHandler(CEP47Event evt);
 
+        /// <summary>
+        /// This event is triggered each time there's a CEP47 event emitted by the contract. Start listening to events
+        /// by calling ListenToEvents.
+        /// </summary>
         public event EventHandler OnCEP47Event;
 
         private ISSEClient _sseClient;
 
+        /// <summary>
+        /// Starts listening to SSE events emitted by a node and triggers a CEP47
+        /// event when there's one related to the CEP47 contract in use.  
+        /// </summary>
+        /// <param name="sseClient">an instance of the ServerEventsClient class listening to events from a node.</param>
         public async Task ListenToEvents(ISSEClient sseClient)
         {
             _sseClient = sseClient;
 
-            var rpcResponse = await CasperClient.QueryGlobalState(ContractHash);
-            var result = rpcResponse.Parse();
+            if (ContractPackageHash is null)
+            {
+                var rpcResponse = await CasperClient.QueryGlobalState(ContractHash);
+                var result = rpcResponse.Parse();
 
-            _contractPackageHash = GlobalStateKey.FromString(
-                result.StoredValue.Contract.ContractPackageHash);
+                ContractPackageHash = GlobalStateKey.FromString(
+                    result.StoredValue.Contract.ContractPackageHash) as HashKey;
+            }
 
             _sseClient.AddEventCallback(EventType.DeployProcessed, "catch-all-cb",
                 this.ProcessEvent);
@@ -73,7 +90,7 @@ namespace Casper.Network.SDK.Clients
                 Spender = map.ContainsKey("spender") ? map["spender"] : null,
                 Sender = map.ContainsKey("sender") ? map["sender"] : null,
                 Recipient = map.ContainsKey("recipient") ? map["recipient"] : null,
-                ContractPackageHash = _contractPackageHash.ToHexString(),
+                ContractPackageHash = ContractPackageHash.ToHexString(),
                 DeployHash = deploy.DeployHash
             };
 
@@ -103,7 +120,7 @@ namespace Casper.Network.SDK.Clients
                     {
                         var map = clValue.ToDictionary<string, string>();
                         if (map.ContainsKey("contract_package_hash") &&
-                            map["contract_package_hash"] == _contractPackageHash.ToHexString().ToLower())
+                            map["contract_package_hash"].Equals(ContractPackageHash.ToHexString(), StringComparison.InvariantCultureIgnoreCase))
                         {
                             TriggerEvent(map, deploy);
                         }
