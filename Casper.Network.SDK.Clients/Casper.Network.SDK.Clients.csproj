@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net5.0</TargetFramework>
+        <AssemblyVersion>1.0.0.0</AssemblyVersion>
+        <FileVersion>1.0.0</FileVersion>
+        <PackageVersion>1.0.0</PackageVersion>
+        <Title>Casper.Network.SDK.Clients</Title>
+        <Authors>make-software</Authors>
+        <PackageProjectUrl>https://github.com/make-software/casper-net-sdk-clients</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/make-software/casper-net-sdk-clients</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageTags>Casper Contracts Clients</PackageTags>
+        <PackageReadmeFile>README_nuget.md</PackageReadmeFile>
+        <PackageLicenseFile>LICENSE</PackageLicenseFile>
+        <Description>
+          Contract Clients for Casper .NET SDK.
+        </Description>
+        <RootNamespace>Casper.Network.SDK.Clients</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Casper.Network.SDK" Version="[1.1.0,2.0)" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Include="README_nuget.md" Pack="true" PackagePath="\" />
+      <None Include="..\LICENSE" Pack="true" PackagePath="\" />
+    </ItemGroup>
+    
+</Project>

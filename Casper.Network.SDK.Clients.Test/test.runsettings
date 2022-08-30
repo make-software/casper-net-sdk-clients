@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+    <RunConfiguration>
+        <EnvironmentVariables>
+            <CASPERNETSDK_NODE_ADDRESS>http://127.0.0.1:11101/rpc</CASPERNETSDK_NODE_ADDRESS>
+            <ERC20TOKEN_WASM>erc20_token.wasm</ERC20TOKEN_WASM>
+            <CEP47TOKEN_WASM>cep47-token.wasm</CEP47TOKEN_WASM>
+        </EnvironmentVariables>
+    </RunConfiguration>
+</RunSettings>
+
