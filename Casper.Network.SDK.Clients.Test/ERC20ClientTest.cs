@@ -100,8 +100,7 @@ namespace Casper.Network.SDK.Clients.Test
         {
             _erc20Client = new ERC20Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
 
-            var b = await _erc20Client.SetContractHash(_ownerAccount.PublicKey, "erc20_token_contract");
-            Assert.IsTrue(b);
+            await _erc20Client.SetContractHash(_ownerAccount.PublicKey, "erc20_token_contract");
 
             if (_contractHash != null)
                 Assert.AreEqual(_contractHash.ToString(), _erc20Client.ContractHash.ToString());
@@ -126,29 +125,15 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.IsNotNull(_contractHash, "This test must run after InstallContractTest");
             var client = new ERC20Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
 
-            var b = await client.SetContractHash(_contractHash.ToString());
-            Assert.IsTrue(b);
+            client.SetContractHash(_contractHash.ToString());
             
-            Assert.AreEqual(TOKEN_NAME, client.Name);
-            Assert.AreEqual(TOKEN_SYMBOL, client.Symbol);
-            Assert.AreEqual(TOKEN_DECIMALS, client.Decimals);
-            Assert.AreEqual(BigInteger.Parse(TOKEN_SUPPLY), client.TotalSupply);
+            Assert.AreEqual(TOKEN_NAME, await client.GetName());
+            Assert.AreEqual(TOKEN_SYMBOL, await client.GetSymbol());
+            Assert.AreEqual(TOKEN_DECIMALS, await client.GetDecimals());
+            Assert.AreEqual(BigInteger.Parse(TOKEN_SUPPLY), await client.GetTotalSupply());
             
             Assert.IsNotNull(client.ContractHash);
             Assert.AreEqual(_contractHash.ToString(), client.ContractHash.ToString());
-        }
-
-        [Test, Order(3)]
-        public void SetContractPackageHashTest()
-        {
-            Assert.IsNotNull(_contractPackageHash, "This test must run after InstallContractTest");
-            var client = new ERC20Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
-
-            var b = client.SetContractPackageHash(_contractPackageHash, null, true);
-            Assert.IsTrue(b);
-
-            var ex = Assert.Catch(() => client.SetContractPackageHash(_contractPackageHash, null, false));
-            Assert.IsNotNull(ex);
         }
 
         [Test, Order(3)]
@@ -157,8 +142,7 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.IsNotNull(_contractPackageHash, "This test must run after InstallContractTest");
             var client = new ERC20Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
             
-            var b = client.SetContractPackageHash(_contractPackageHash, null, true);
-            Assert.IsTrue(b);
+            client.SetContractPackageHash(_contractPackageHash, null);
             
             var deployHelper = client.TransferTokens(_ownerAccount.PublicKey,
                 _user2AccountKey,
@@ -345,8 +329,7 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.IsNotNull(_contractPackageHash, "This test must run after InstallContractTest");
             var client = new ERC20Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
             
-            var b = client.SetContractPackageHash(_contractPackageHash, null, true);
-            Assert.IsTrue(b);
+            client.SetContractPackageHash(_contractPackageHash, null);
 
             var ex = Assert.CatchAsync(() => client.GetBalance(_ownerAccountKey));
             Assert.IsNotNull(ex);

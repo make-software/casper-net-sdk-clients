@@ -8,44 +8,38 @@ namespace Casper.Network.SDK.Clients
     public interface ICEP47Client
     {
         /// <summary>
-        /// Name of the CEP47 token
+        /// Gets the name of the CEP47 token
         /// </summary>
-        string Name { get; }
+        Task<string> GetName();
 
         /// <summary>
-        /// Symbol of the CEP47 token
+        /// Gets the symbol of the CEP47 token
         /// </summary>
-        string Symbol { get; }
+        Task<string> GetSymbol();
 
         /// <summary>
-        /// Metadata of the CEP47 token
+        /// Gets the metadata of the CEP47 token
         /// </summary>
-        Dictionary<string, string> Meta { get; }
+        Task<Dictionary<string, string>> GetMetadata();
 
         /// <summary>
         /// Looks up the contract hash to use for all calls to the contract in a named key of an account.
         /// </summary>
         /// <param name="publicKey">Account that contains a named key with the contract hash.</param>
         /// <param name="namedKey">Named key that contains the contract hash.</param>
-        /// <param name="skipNamedkeysQuery">Set this to true to skip the retrieval of the default named keys during initialization.</param>
-        /// <returns>True if the contract hash and, optionally, the named keys have been retrieved.</returns>
-        Task<bool> SetContractHash(PublicKey publicKey, string namedKey, bool skipNamedkeysQuery=false);
+        Task SetContractHash(PublicKey publicKey, string namedKey);
 
         /// <summary>
         /// Sets the contract hash to use for all calls to the contract
         /// </summary>
         /// <param name="contractHash">Contract hash of the contract</param>
-        /// <param name="skipNamedkeysQuery">Set this to true to skip the retrieval of the default named keys during initialization.</param>
-        /// <returns>False in case of an error retrieving the contract named keys. True otherwise.</returns>
-        Task<bool> SetContractHash(string contractHash, bool skipNamedkeysQuery=false);
+        void SetContractHash(string contractHash);
 
         /// <summary>
         /// Sets the contract hash to use for all calls to the contract
         /// </summary>
         /// <param name="contractHash">A valid Contract hash.</param>
-        /// <param name="skipNamedkeysQuery">Set this to true to skip the retrieval of the default named keys during initialization.</param>
-        /// <returns>False in case of an error retrieving the contract named keys. True otherwise.</returns>
-        Task<bool> SetContractHash(GlobalStateKey contractHash, bool skipNamedkeysQuery=false);
+        void SetContractHash(GlobalStateKey contractHash);
 
         /// <summary>
         /// Initialization of the client with a contract package hash allows to make contract method calls, but it does not allow
@@ -53,9 +47,7 @@ namespace Casper.Network.SDK.Clients
         /// </summary>
         /// <param name="contractPackageHash">The contract package hash to use for all calls to the contract.</param>
         /// <param name="contractVersion">The version number of the contract to call. Use null to call latest version.</param>
-        /// <param name="skipNamedkeysQuery">Must be true. Call SetContractHash if you need to read named keys.</param>
-        /// <returns>False in case of an error. True otherwise.</returns>
-        bool SetContractPackageHash(GlobalStateKey contractPackageHash, uint? contractVersion, bool skipNamedkeysQuery=false);
+        void SetContractPackageHash(GlobalStateKey contractPackageHash, uint? contractVersion);
 
         /// <summary>
         /// Prepares a Deploy to make a new install of the CEP47 contract with the given details.

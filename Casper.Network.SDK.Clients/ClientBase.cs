@@ -58,15 +58,16 @@ namespace Casper.Network.SDK.Clients
         /// </summary>
         /// <param name="publicKey">Account that contains a named key with the contract hash.</param>
         /// <param name="namedKey">Named key that contains the contract hash.</param>
-        /// <param name="skipNamedkeysQuery">Set this to true to skip the retrieval of the default named keys during initialization.</param>
-        /// <returns>True if the contract hash and, optionally, the named keys have been retrieved.</returns>
-        public async Task<bool> SetContractHash(PublicKey publicKey, string namedKey, bool skipNamedkeysQuery=false)
+        public async Task SetContractHash(PublicKey publicKey, string namedKey)
         {
             var response = await CasperClient.GetAccountInfo(publicKey);
             var result = response.Parse();
             var nk = result.Account.NamedKeys.FirstOrDefault(k => k.Name == namedKey);
             if (nk != null)
-                return await SetContractHash(nk.Key, skipNamedkeysQuery);
+            {
+                SetContractHash(nk.Key);
+                return;
+            }
 
             throw new ContractException($"Named key '{namedKey}' not found.", (int)ERC20ClientErrors.ContractNotFound);
         }
@@ -75,21 +76,20 @@ namespace Casper.Network.SDK.Clients
         /// Sets the contract hash to use for all calls to the contract
         /// </summary>
         /// <param name="contractHash">Contract hash of the contract</param>
-        /// <param name="skipNamedkeysQuery">Set this to true to skip the retrieval of the default named keys during initialization.</param>
-        /// <returns>False in case of an error retrieving the contract named keys. True otherwise.</returns>
-        public async Task<bool> SetContractHash(string contractHash, bool skipNamedkeysQuery=false)
+        public void SetContractHash(string contractHash)
         {
             var key = GlobalStateKey.FromString(contractHash);
-            return await SetContractHash(key, skipNamedkeysQuery);
+            SetContractHash(key);
         }
 
         /// <summary>
-        /// Abstract method that derived classes must implement to store the Contract hash and, optionally, retrieve its named keys.
+        /// Sets the contract hash to use for all calls to the contract
         /// </summary>
         /// <param name="contractHash">A valid Contract hash.</param>
-        /// <param name="skipNamedkeysQuery">Set this to true to skip the retrieval of the default named keys during initialization.</param>
-        /// <returns>False in case of an error retrieving the contract named keys. True otherwise.</returns>
-        public abstract Task<bool> SetContractHash(GlobalStateKey contractHash, bool skipNamedkeysQuery=false);
+        public void SetContractHash(GlobalStateKey contractHash)
+        {
+            ContractHash = contractHash as HashKey;
+        }
 
         /// <summary>
         /// Initialization of the client with a contract package hash allows to make contract method calls, but it does not allow
@@ -97,18 +97,10 @@ namespace Casper.Network.SDK.Clients
         /// </summary>
         /// <param name="contractPackageHash">The contract package hash to use for all calls to the contract.</param>
         /// <param name="contractVersion">The version number of the contract to call. Use null to call latest version.</param>
-        /// <param name="skipNamedkeysQuery">Must be true. Call SetContractHash if you need to read named keys.</param>
-        /// <returns>False in case of an error. True otherwise.</returns>
-        public bool SetContractPackageHash(GlobalStateKey contractPackageHash, uint? contractVersion, bool skipNamedkeysQuery = false)
+        public void SetContractPackageHash(GlobalStateKey contractPackageHash, uint? contractVersion)
         {
-            if (skipNamedkeysQuery == false)
-                throw new NotImplementedException(
-                    "SetContractPackageHash is only allowed with skipNamedKeysQuery=true");
-
             ContractPackageHash = contractPackageHash as HashKey;
             ContractVersion = contractVersion;
-            
-            return true;
         }
 
         protected ProcessDeployResult ProcessDeployResult;
