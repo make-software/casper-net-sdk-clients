@@ -106,8 +106,7 @@ namespace Casper.Network.SDK.Clients.Test
         {
             _cep47Client = new CEP47Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
 
-            var b = await _cep47Client.SetContractHash(_ownerAccount.PublicKey, $"{TOKEN_NAME}_contract_hash");
-            Assert.IsTrue(b);
+            await _cep47Client.SetContractHash(_ownerAccount.PublicKey, $"{TOKEN_NAME}_contract_hash");
 
             if (_contractHash != null)
                 Assert.AreEqual(_contractHash.ToString(), _cep47Client.ContractHash.ToString());
@@ -141,30 +140,19 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.IsNotNull(_contractHash, "This test must run after InstallContractTest");
             var client = new CEP47Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
 
-            var b = await client.SetContractHash(_contractHash.ToString());
-            Assert.IsTrue(b);
+            client.SetContractHash(_contractHash.ToString());
 
-            Assert.AreEqual(TOKEN_NAME, client.Name);
-            Assert.AreEqual(TOKEN_SYMBOL, client.Symbol);
+            Assert.AreEqual(TOKEN_NAME, await client.GetName());
+            Assert.AreEqual(TOKEN_SYMBOL, await client.GetSymbol());
             Assert.AreEqual(BigInteger.Zero, await client.GetTotalSupply());
 
-            Assert.IsNotNull(client.Meta);
+            var metadata = await client.GetMetadata();
+            Assert.IsNotNull(metadata);
+            Assert.AreEqual(1, metadata.Count());
+            Assert.IsTrue(metadata.ContainsKey("origin"));
 
             Assert.IsNotNull(client.ContractHash);
             Assert.AreEqual(_contractHash.ToString(), client.ContractHash.ToString());
-        }
-        
-        [Test, Order(3)]
-        public void SetContractPackageHashTest()
-        {
-            Assert.IsNotNull(_contractPackageHash, "This test must run after InstallContractTest");
-            var client = new CEP47Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
-
-            var b = client.SetContractPackageHash(_contractPackageHash, null, true);
-            Assert.IsTrue(b);
-
-            var ex = Assert.Catch(() => client.SetContractPackageHash(_contractPackageHash, null, false));
-            Assert.IsNotNull(ex);
         }
 
         [Test, Order(3)]
@@ -203,8 +191,7 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.IsNotNull(_contractPackageHash, "This test must run after InstallContractTest");
             var client = new CEP47Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
 
-            var b = client.SetContractPackageHash(_contractPackageHash, null, true);
-            Assert.IsTrue(b);
+            client.SetContractPackageHash(_contractPackageHash, null);
             
             var tokenMeta = new Dictionary<string, string>
             {

@@ -13,24 +13,28 @@ namespace Casper.Network.SDK.Clients
     public class ERC20Client : ClientBase, IERC20Client
     {
         /// <summary>
-        /// Name of the ERC20 token
+        /// Gets the name of the ERC20 token
         /// </summary>
-        public string Name { get; private set; }
+        public async Task<string> GetName() =>
+            (await GetNamedKey<CLValue>("name")).ToString();
 
         /// <summary>
         /// Symbol of the ERC20 token
         /// </summary>
-        public string Symbol { get; private set; }
+        public async Task<string> GetSymbol() =>
+            (await GetNamedKey<CLValue>("symbol")).ToString();
 
         /// <summary>
         /// Decimals of the ERC20 token.
         /// </summary>
-        public byte Decimals { get; private set; }
+        public async Task<byte> GetDecimals() =>
+            (await GetNamedKey<CLValue>("decimals")).ToByte();
 
         /// <summary>
         /// Total supply of the ERC20 token.
         /// </summary>
-        public BigInteger TotalSupply { get; private set; }
+        public async Task<BigInteger> GetTotalSupply() =>
+            (await GetNamedKey<CLValue>("total_supply")).ToBigInteger();
 
         /// <summary>
         /// Constructor of the client. Call SetContractHash or SetContractPackageHash before any other method. 
@@ -62,34 +66,6 @@ namespace Casper.Network.SDK.Clients
                 throw new ContractException("Deploy not executed. " + executionResult.ErrorMessage,
                     (long) ERC20ClientErrors.OtherError);
             };
-        }
-
-        /// <summary>
-        /// Stores the contract hash and, optionally, retrieves the ERC20 contract main details.
-        /// </summary>
-        /// <param name="contractHash">Contract hash of the contract</param>
-        /// <param name="skipNamedkeysQuery">Set this to true to skip the retrieval of the default named keys during initialization.</param>
-        /// <returns>False in case of an error retrieving the contract named keys. True otherwise.</returns>
-        public override async Task<bool> SetContractHash(GlobalStateKey contractHash, bool skipNamedkeysQuery = false)
-        {
-            ContractHash = contractHash as HashKey;
-
-            if (!skipNamedkeysQuery)
-            {
-                var result = await GetNamedKey<CLValue>("name");
-                Name = result.ToString();
-
-                result = await GetNamedKey<CLValue>("symbol");
-                Symbol = result.ToString();
-
-                result = await GetNamedKey<CLValue>("decimals");
-                Decimals = result.ToByte();
-
-                result = await GetNamedKey<CLValue>("total_supply");
-                TotalSupply = result.ToBigInteger();
-            }
-
-            return true;
         }
 
         /// <summary>

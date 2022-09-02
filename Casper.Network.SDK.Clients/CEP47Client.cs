@@ -13,19 +13,22 @@ namespace Casper.Network.SDK.Clients
     public partial class CEP47Client : ClientBase, ICEP47Client
     {
         /// <summary>
-        /// Name of the CEP47 token
+        /// Gets the name of the CEP47 token
         /// </summary>
-        public string Name { get; private set; }
+        public async Task<string> GetName() =>
+            (await GetNamedKey<CLValue>("name")).ToString();
 
         /// <summary>
-        /// Symbol of the CEP47 token
+        /// Gets the symbol of the CEP47 token
         /// </summary>
-        public string Symbol { get; private set; }
+        public async Task<string> GetSymbol() =>
+            (await GetNamedKey<CLValue>("symbol")).ToString();
 
         /// <summary>
-        /// Metadata of the CEP47 token
+        /// Gets the metadata of the CEP47 token
         /// </summary>
-        public Dictionary<string, string> Meta { get; private set; }
+        public async Task<Dictionary<string, string>> GetMetadata() =>
+            (await GetNamedKey<CLValue>("meta")).ToDictionary<string, string>();
 
         /// <summary>
         /// Constructor of the client. Call SetContractHash or SetContractPackageHash before any other method. 
@@ -40,7 +43,7 @@ namespace Casper.Network.SDK.Clients
                 var executionResult = result.ExecutionResults.FirstOrDefault();
                 if (executionResult is null)
                     throw new ContractException("ExecutionResults null for processed deploy.",
-                        (long) ERC20ClientErrors.OtherError);
+                        (long) CEP47ClientErrors.OtherError);
 
                 if (executionResult.IsSuccess)
                     return;
@@ -64,31 +67,6 @@ namespace Casper.Network.SDK.Clients
                 throw new ContractException("Deploy not executed. " + executionResult.ErrorMessage,
                     (long) CEP47ClientErrors.OtherError);
             };
-        }
-
-        /// <summary>
-        /// Sets the contract hash to use for all calls to the contract
-        /// </summary>
-        /// <param name="contractHash">A valid Contract hash.</param>
-        /// <param name="skipNamedkeysQuery">Set this to true to skip the retrieval of the default named keys during initialization.</param>
-        /// <returns>False in case of an error retrieving the contract named keys. True otherwise.</returns>
-        public override async Task<bool> SetContractHash(GlobalStateKey contractHash, bool skipNamedkeysQuery = false)
-        {
-            ContractHash = contractHash as HashKey;
-
-            if (!skipNamedkeysQuery)
-            {
-                var result = await GetNamedKey<CLValue>("name");
-                Name = result.ToString();
-
-                result = await GetNamedKey<CLValue>("symbol");
-                Symbol = result.ToString();
-
-                result = await GetNamedKey<CLValue>("meta");
-                Meta = result.ToDictionary<string, string>();
-            }
-
-            return true;
         }
 
         /// <summary>
