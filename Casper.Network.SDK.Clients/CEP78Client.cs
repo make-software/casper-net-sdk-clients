@@ -82,18 +82,23 @@ namespace Casper.Network.SDK.Clients.CEP78
     public class JsonSchema
     {
         [JsonPropertyName("properties")] public Dictionary<string, JsonSchemaEntry> Properties { get; set; }
+
+        public JsonSchema()
+        {
+            Properties = new Dictionary<string, JsonSchemaEntry>();
+        }
     }
 
     public interface ITokenMetadata
     {
         string Serialize();
-        
+
         static ITokenMetadata Deserialize<T>(string json) where T : ITokenMetadata
         {
             return JsonSerializer.Deserialize<T>(json);
         }
     }
-    
+
     public class CEP78TokenMetadata : ITokenMetadata
     {
         [JsonPropertyName("name")] public string Name { get; set; }
@@ -111,88 +116,92 @@ namespace Casper.Network.SDK.Clients.CEP78
         [JsonPropertyName("name")] public string Name { get; set; }
         [JsonPropertyName("symbol")] public string Symbol { get; set; }
         [JsonPropertyName("token_uri")] public string TokenUri { get; set; }
-        
+
         public string Serialize()
         {
             return JsonSerializer.Serialize(this);
         }
     }
-    
+
     public class CEP78InstallArgs
     {
         public string CollectionName { get; set; }
-        
+
         public string CollectionSymbol { get; set; }
-        
+
         public ulong TokenTotalSupply { get; set; }
-        
+
         public NFTOwnershipMode OwnershipMode { get; set; }
-        
+
         public NFTKind NFTKind { get; set; }
-        
+
         public NFTMetadataKind NFTMetadataKind { get; set; }
-        
+
         public JsonSchema JsonSchema { get; set; }
-        
+
         public NFTIdentifierMode NFTIdentifierMode { get; set; }
-        
+
         public MetadataMutability MetadataMutability { get; set; }
 
         public MintingMode? MintingMode { get; set; }
-        
+
         public bool? AllowMinting { get; set; }
-        
+
         public WhitelistMode? WhitelistMode { get; set; }
-        
+
         public NFTHolderMode? NFTHolderMode { get; set; }
 
         public IEnumerable<HashKey> ContractWhiteList { get; set; }
-        
+
         public BurnMode? BurnMode { get; set; }
     }
 
     public class CEP78Client : ClientBase, ICEP78Client
     {
         private NFTMetadataKind? _metadataKind;
-        
-        public async Task<string> GetCollectionName() => 
+
+        public async Task<string> GetCollectionName() =>
             (await GetNamedKey<CLValue>("collection_name")).ToString();
 
-        public async Task<string> GetCollectionSymbol() => 
+        public async Task<string> GetCollectionSymbol() =>
             (await GetNamedKey<CLValue>("collection_symbol")).ToString();
 
-        public async Task<ulong> GetTokenTotalSupply() => 
+        public async Task<ulong> GetTokenTotalSupply() =>
             (await GetNamedKey<CLValue>("total_token_supply")).ToUInt64();
 
-        public async Task<NFTOwnershipMode> GetOwnershipMode() => 
-            (NFTOwnershipMode)(await GetNamedKey<CLValue>("ownership_mode")).ToByte();
+        public async Task<NFTOwnershipMode> GetOwnershipMode() =>
+            (NFTOwnershipMode) (await GetNamedKey<CLValue>("ownership_mode")).ToByte();
 
-        public async Task<NFTKind> GetNFTKind() => 
-            (NFTKind)(await GetNamedKey<CLValue>("nft_kind")).ToByte();
+        public async Task<NFTKind> GetNFTKind() =>
+            (NFTKind) (await GetNamedKey<CLValue>("nft_kind")).ToByte();
 
         public async Task<NFTMetadataKind> GetNFTMetadataKind() =>
-            (NFTMetadataKind)(await GetNamedKey<CLValue>("nft_metadata_kind")).ToByte();
+            (NFTMetadataKind) (await GetNamedKey<CLValue>("nft_metadata_kind")).ToByte();
 
         public async Task<JsonSchema> GetJsonSchema()
         {
             var json = (await GetNamedKey<CLValue>("json_schema")).ToString();
+            
+            if (string.IsNullOrWhiteSpace(json))
+                return new JsonSchema();
+            
             return JsonSerializer.Deserialize<JsonSchema>(json);
         }
 
         public async Task<NFTIdentifierMode> GetNFTIdentifierMode() =>
-            (NFTIdentifierMode)(await GetNamedKey<CLValue>("identifier_mode")).ToByte();
+            (NFTIdentifierMode) (await GetNamedKey<CLValue>("identifier_mode")).ToByte();
 
         public async Task<MetadataMutability> GetMetadataMutability() =>
-            (MetadataMutability)(await GetNamedKey<CLValue>("metadata_mutability")).ToByte();
+            (MetadataMutability) (await GetNamedKey<CLValue>("metadata_mutability")).ToByte();
 
-        public async Task<MintingMode> GetMintingMode() => 
-            (MintingMode)(await GetNamedKey<CLValue?>("minting_mode")).ToByte();
+        public async Task<MintingMode> GetMintingMode() =>
+            (MintingMode) (await GetNamedKey<CLValue?>("minting_mode")).ToByte();
 
-        public async Task<bool> GetAllowMinting() => 
+        public async Task<bool> GetAllowMinting() =>
             (await GetNamedKey<CLValue>("allow_minting")).ToBoolean();
 
-        public async Task<WhitelistMode> GetWhitelistMode() => 
-            (WhitelistMode)(await GetNamedKey<CLValue>("whitelist_mode")).ToByte();
+        public async Task<WhitelistMode> GetWhitelistMode() =>
+            (WhitelistMode) (await GetNamedKey<CLValue>("whitelist_mode")).ToByte();
 
         public async Task<NFTHolderMode> GetNFTHolderMode() =>
             (NFTHolderMode) (await GetNamedKey<CLValue>("holder_mode")).ToByte();
@@ -203,15 +212,15 @@ namespace Casper.Network.SDK.Clients.CEP78
             return value.ToList<byte[]>().Select(hash => new HashKey(hash));
         }
 
-        public async Task<BurnMode> GetBurnMode() => 
-            (BurnMode)(await GetNamedKey<CLValue>("burn_mode")).ToByte();
-        
-        public async Task<ulong> GetNumberOfMintedTokens() => 
+        public async Task<BurnMode> GetBurnMode() =>
+            (BurnMode) (await GetNamedKey<CLValue>("burn_mode")).ToByte();
+
+        public async Task<ulong> GetNumberOfMintedTokens() =>
             (await GetNamedKey<CLValue>("number_of_minted_tokens")).ToUInt64();
 
-        public async Task<string> GetReceiptName() => 
+        public async Task<string> GetReceiptName() =>
             (await GetNamedKey<CLValue>("receipt_name")).ToString();
-        
+
         public async Task<GlobalStateKey> GetInstaller()
         {
             var response = await CasperClient.QueryGlobalState(ContractHash, null, "installer");
@@ -220,9 +229,10 @@ namespace Casper.Network.SDK.Clients.CEP78
             if (result.StoredValue.Account != null)
                 return result.StoredValue.Account.AccountHash;
 
-            throw new ContractException("Unexpected response for get 'installer' named key.", (long)CEP78ClientErrors.InvalidAccount);
+            throw new ContractException("Unexpected response for get 'installer' named key.",
+                (long) CEP78ClientErrors.InvalidAccount);
         }
-        
+
         public CEP78Client(ICasperClient casperClient, string chainName)
             : base(casperClient, chainName)
         {
@@ -255,13 +265,6 @@ namespace Casper.Network.SDK.Clients.CEP78
                 throw new ContractException("Deploy not executed. " + executionResult.ErrorMessage,
                     (long) CEP47ClientErrors.OtherError);
             };
-        }
-
-        public override Task<bool> SetContractHash(GlobalStateKey contractHash, bool skipNamedkeysQuery = false)
-        {
-            ContractHash = contractHash as HashKey;
-
-            return Task.FromResult(true);
         }
 
         public DeployHelper InstallContract(byte[] wasmBytes,
@@ -297,19 +300,19 @@ namespace Casper.Network.SDK.Clients.CEP78
 
             if (installArgs.MintingMode != null)
                 runtimeArgs.Add(new NamedArg("minting_mode",
-                    CLValue.Option(CLValue.U8((byte) installArgs.MintingMode))));
+                    CLValue.U8((byte) installArgs.MintingMode)));
 
             if (installArgs.AllowMinting != null)
                 runtimeArgs.Add(new NamedArg("allow_minting",
-                    CLValue.Option(CLValue.Bool(installArgs.AllowMinting.Value))));
+                    CLValue.Bool(installArgs.AllowMinting.Value)));
 
             if (installArgs.WhitelistMode != null)
                 runtimeArgs.Add(new NamedArg("whitelist_mode",
-                    CLValue.Option(CLValue.U8((byte) installArgs.WhitelistMode.Value))));
+                    CLValue.U8((byte) installArgs.WhitelistMode.Value)));
 
             if (installArgs.NFTHolderMode != null)
                 runtimeArgs.Add(new NamedArg("holder_mode",
-                    CLValue.Option(CLValue.U8((byte) installArgs.NFTHolderMode.Value))));
+                    CLValue.U8((byte) installArgs.NFTHolderMode.Value)));
 
             if (installArgs.ContractWhiteList != null && installArgs.ContractWhiteList.Any())
             {
@@ -319,7 +322,7 @@ namespace Casper.Network.SDK.Clients.CEP78
 
             if (installArgs.BurnMode != null)
                 runtimeArgs.Add(new NamedArg("burn_mode",
-                    CLValue.Option(CLValue.U8((byte) installArgs.BurnMode.Value))));
+                    CLValue.U8((byte) installArgs.BurnMode.Value)));
 
             var session = new ModuleBytesDeployItem(wasmBytes, runtimeArgs);
 
@@ -335,21 +338,22 @@ namespace Casper.Network.SDK.Clients.CEP78
             ulong ttl = 1800000)
         {
             var namedArgs = new List<NamedArg>();
-            
-            if(allowMinting != null)
+
+            if (allowMinting != null)
                 namedArgs.Add(new NamedArg("allow_minting", allowMinting.Value));
-            
+
             if (ContractWhiteList != null)
             {
                 if (!ContractWhiteList.Any())
-                    throw new ContractException("ContractWhitelist must contain at least one entry", (long)CEP78ClientErrors.EmptyContractWhitelist);
+                    throw new ContractException("ContractWhitelist must contain at least one entry",
+                        (long) CEP78ClientErrors.EmptyContractWhitelist);
                 var contracts = ContractWhiteList.Select(c => CLValue.ByteArray(c.RawBytes)).ToArray();
                 namedArgs.Add(new NamedArg("contract_whitelist", CLValue.List(contracts)));
             }
 
             if (!namedArgs.Any())
-                throw new ContractException("No variables to set.", (long)CEP78ClientErrors.OtherError);
-            
+                throw new ContractException("No variables to set.", (long) CEP78ClientErrors.OtherError);
+
             return BuildDeployHelper("set_variables",
                 namedArgs,
                 ownerPk,
@@ -364,20 +368,20 @@ namespace Casper.Network.SDK.Clients.CEP78
             ulong ttl = 1800000)
         {
             var jsonMetadata = JsonSerializer.Serialize(tokenMetadata);
-            
+
             var namedArgs = new List<NamedArg>()
             {
                 new NamedArg("token_owner", recipientKey),
                 new NamedArg("token_meta_data", jsonMetadata)
             };
-            
+
             return BuildDeployHelper("mint",
                 namedArgs,
                 minterPk,
                 paymentMotes,
                 ttl);
         }
-        
+
         public DeployHelper Burn(PublicKey senderPk,
             ulong tokenId,
             BigInteger paymentMotes,
@@ -387,14 +391,14 @@ namespace Casper.Network.SDK.Clients.CEP78
             {
                 new NamedArg("token_id", tokenId),
             };
-            
+
             return BuildDeployHelper("burn",
                 namedArgs,
                 senderPk,
                 paymentMotes,
                 ttl);
         }
-        
+
         public DeployHelper Burn(PublicKey senderPk,
             string tokenHash,
             BigInteger paymentMotes,
@@ -404,14 +408,14 @@ namespace Casper.Network.SDK.Clients.CEP78
             {
                 new NamedArg("token_hash", tokenHash),
             };
-            
+
             return BuildDeployHelper("burn",
                 namedArgs,
                 senderPk,
                 paymentMotes,
                 ttl);
         }
-        
+
         public DeployHelper Approve(PublicKey senderPk,
             ulong tokenId,
             GlobalStateKey operatorKey,
@@ -423,14 +427,14 @@ namespace Casper.Network.SDK.Clients.CEP78
                 new NamedArg("token_id", tokenId),
                 new NamedArg("operator", operatorKey),
             };
-            
+
             return BuildDeployHelper("approve",
                 namedArgs,
                 senderPk,
                 paymentMotes,
                 ttl);
         }
-        
+
         public DeployHelper Approve(PublicKey senderPk,
             string tokenHash,
             GlobalStateKey operatorKey,
@@ -442,14 +446,14 @@ namespace Casper.Network.SDK.Clients.CEP78
                 new NamedArg("token_hash", tokenHash),
                 new NamedArg("operator", operatorKey),
             };
-            
+
             return BuildDeployHelper("approve",
                 namedArgs,
                 senderPk,
                 paymentMotes,
                 ttl);
         }
-        
+
         public DeployHelper ApproveAll(PublicKey senderPk,
             GlobalStateKey operatorKey,
             BigInteger paymentMotes,
@@ -460,14 +464,14 @@ namespace Casper.Network.SDK.Clients.CEP78
                 new NamedArg("approve_all", true),
                 new NamedArg("operator", operatorKey),
             };
-            
+
             return BuildDeployHelper("set_approval_for_all",
                 namedArgs,
                 senderPk,
                 paymentMotes,
                 ttl);
         }
-        
+
         public DeployHelper RemoveApproveAll(PublicKey senderPk,
             GlobalStateKey operatorKey,
             BigInteger paymentMotes,
@@ -478,14 +482,14 @@ namespace Casper.Network.SDK.Clients.CEP78
                 new NamedArg("approve_all", false),
                 new NamedArg("operator", operatorKey),
             };
-            
+
             return BuildDeployHelper("approve",
                 namedArgs,
                 senderPk,
                 paymentMotes,
                 ttl);
         }
-        
+
         public DeployHelper Transfer(PublicKey callerPk,
             ulong tokenId,
             GlobalStateKey ownerKey,
@@ -499,14 +503,14 @@ namespace Casper.Network.SDK.Clients.CEP78
                 new NamedArg("source_key", ownerKey),
                 new NamedArg("target_key", recipientKey),
             };
-            
+
             return BuildDeployHelper("transfer",
                 namedArgs,
                 callerPk,
                 paymentMotes,
                 ttl);
         }
-        
+
         public DeployHelper Transfer(PublicKey callerPk,
             string tokenHash,
             GlobalStateKey ownerKey,
@@ -520,14 +524,14 @@ namespace Casper.Network.SDK.Clients.CEP78
                 new NamedArg("source_key", ownerKey),
                 new NamedArg("target_key", recipientKey),
             };
-            
+
             return BuildDeployHelper("transfer",
                 namedArgs,
                 callerPk,
                 paymentMotes,
                 ttl);
         }
-        
+
         public DeployHelper SetTokenMetadata(PublicKey callerPk,
             ulong tokenId,
             ITokenMetadata tokenMetadata,
@@ -535,20 +539,20 @@ namespace Casper.Network.SDK.Clients.CEP78
             ulong ttl = 1800000)
         {
             var metadata = tokenMetadata.Serialize();
-            
+
             var namedArgs = new List<NamedArg>()
             {
                 new NamedArg("token_id", tokenId),
                 new NamedArg("token_meta_data", metadata),
             };
-            
+
             return BuildDeployHelper("set_token_metadata",
                 namedArgs,
                 callerPk,
                 paymentMotes,
                 ttl);
         }
-        
+
         public DeployHelper SetTokenMetadata(PublicKey callerPk,
             string tokenHash,
             ITokenMetadata tokenMetadata,
@@ -556,13 +560,13 @@ namespace Casper.Network.SDK.Clients.CEP78
             ulong ttl = 1800000)
         {
             var metadata = tokenMetadata.Serialize();
-            
+
             var namedArgs = new List<NamedArg>()
             {
                 new NamedArg("token_hash", tokenHash),
                 new NamedArg("token_meta_data", metadata),
             };
-            
+
             return BuildDeployHelper("set_token_metadata",
                 namedArgs,
                 callerPk,
@@ -574,16 +578,16 @@ namespace Casper.Network.SDK.Clients.CEP78
         {
             try
             {
-                var result = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(), 
+                var result = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
                     "balances", ownerKey.ToHexString().ToLower());
-                
+
                 return result.Parse().StoredValue.CLValue.ToUInt64();
             }
             catch (RpcClientException e)
             {
                 if (e.RpcError.Code.Equals(-32003)) //Dictionary item not found -> account not known
                     return 0;
-                
+
                 throw;
             }
         }
@@ -597,16 +601,16 @@ namespace Casper.Network.SDK.Clients.CEP78
         {
             try
             {
-                var result = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(), 
+                var result = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
                     "token_owners", tokenHash);
-                
+
                 return result.Parse().StoredValue.CLValue.ToGlobalStateKey();
             }
             catch (RpcClientException e)
             {
                 if (e.RpcError.Code.Equals(-32003)) //Dictionary item not found -> account not known
                     return null;
-                
+
                 throw;
             }
         }
@@ -617,20 +621,20 @@ namespace Casper.Network.SDK.Clients.CEP78
         /// <param name="ownerKey"></param>
         /// <typeparam name="TTokenIdentifier">only `ulong` or `string` allowed</typeparam>
         /// <returns></returns>
-        public async Task<IEnumerable<TTokenIdentifier>> GetOwnedTokens<TTokenIdentifier>(GlobalStateKey ownerKey)
+        public async Task<IEnumerable<TTokenIdentifier>> GetOwnedTokenIdentifiers<TTokenIdentifier>(GlobalStateKey ownerKey)
         {
             try
             {
-                var result = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(), 
+                var result = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
                     "owned_tokens", ownerKey.ToHexString().ToLower());
-                
+
                 return result.Parse().StoredValue.CLValue.ToList<TTokenIdentifier>();
             }
             catch (RpcClientException e)
             {
                 if (e.RpcError.Code.Equals(-32003)) //Dictionary item not found -> account not known
                     return new List<TTokenIdentifier>();
-                
+
                 throw;
             }
         }
@@ -644,16 +648,16 @@ namespace Casper.Network.SDK.Clients.CEP78
         {
             try
             {
-                var result = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(), 
+                var result = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
                     "token_issuers", tokenHash);
-                
+
                 return result.Parse().StoredValue.CLValue.ToGlobalStateKey();
             }
             catch (RpcClientException e)
             {
                 if (e.RpcError.Code.Equals(-32003)) //Dictionary item not found -> account not known
                     return null;
-                
+
                 throw;
             }
         }
@@ -662,7 +666,7 @@ namespace Casper.Network.SDK.Clients.CEP78
         {
             return await GetRawMetadata(tokenId.ToString());
         }
-        
+
         public async Task<string> GetRawMetadata(string tokenHash)
         {
             try
@@ -677,8 +681,8 @@ namespace Casper.Network.SDK.Clients.CEP78
                     NFTMetadataKind.CustomValidated => "metadata_custom_validated",
                     _ => "metadata_raw"
                 };
-                
-                var result = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(), 
+
+                var result = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
                     dictionaryName, tokenHash);
 
                 var jsonString = result.Parse().StoredValue.CLValue.ToString();
@@ -689,16 +693,16 @@ namespace Casper.Network.SDK.Clients.CEP78
             {
                 if (e.RpcError.Code.Equals(-32003)) //Dictionary item not found -> account not known
                     throw;
-                
+
                 throw;
             }
         }
-        
+
         public async Task<T> GetMetadata<T>(ulong tokenId) where T : ITokenMetadata
         {
             return await GetMetadata<T>(tokenId.ToString());
         }
-        
+
         public async Task<T> GetMetadata<T>(string tokenHash) where T : ITokenMetadata
         {
             var jsonString = await GetRawMetadata(tokenHash);
@@ -710,23 +714,23 @@ namespace Casper.Network.SDK.Clients.CEP78
         {
             return await GetApproved(tokenId.ToString());
         }
-        
+
         public async Task<GlobalStateKey> GetApproved(string tokenHash)
         {
             try
             {
-                var result = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(), 
+                var result = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
                     "operator", tokenHash);
 
                 var option = result.Parse().StoredValue.CLValue;
-                
+
                 return option.Some<GlobalStateKey>(out var operatorKey) ? operatorKey : null;
             }
             catch (RpcClientException e)
             {
                 if (e.RpcError.Code.Equals(-32003)) //Dictionary item not found -> token not known or no approval
                     return null;
-                
+
                 throw;
             }
         }
@@ -735,12 +739,12 @@ namespace Casper.Network.SDK.Clients.CEP78
         {
             return await IsTokenBurned(tokenId.ToString());
         }
-        
+
         public async Task<bool> IsTokenBurned(string tokenHash)
         {
             try
             {
-                var result = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(), 
+                var result = await CasperClient.GetDictionaryItemByContract(ContractHash.ToString(),
                     "burnt_tokens", tokenHash);
 
                 // an entry in the dictionary means the token is burned, regardless the value of the entry 
@@ -752,12 +756,12 @@ namespace Casper.Network.SDK.Clients.CEP78
             {
                 if (e.RpcError.Code.Equals(-32003)) //Dictionary item not found -> token not burned
                     return false;
-                
+
                 throw;
             }
         }
     }
-    
+
     /// <summary>
     /// Enumeration with common CEP78 related errors that can be returned by the CEP78 contract or the client.
     /// </summary>
