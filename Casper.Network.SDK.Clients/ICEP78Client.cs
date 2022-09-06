@@ -111,7 +111,7 @@ namespace Casper.Network.SDK.Clients.CEP78
         /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         DeployHelper Mint(PublicKey minterPk,
             GlobalStateKey recipientKey,
-            object tokenMetadata,
+            ITokenMetadata tokenMetadata,
             BigInteger paymentMotes,
             ulong ttl = 1800000);
 

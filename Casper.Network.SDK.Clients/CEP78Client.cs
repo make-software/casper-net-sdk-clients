@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Casper.Network.SDK.JsonRpc;
 using Casper.Network.SDK.Types;
@@ -11,76 +13,215 @@ using Casper.Network.SDK.Utils;
 
 namespace Casper.Network.SDK.Clients.CEP78
 {
+    /// <summary>
+    /// Specifies the behavior regarding ownership of NFTs and whether the owner of the NFT can change over the
+    /// contract's lifetime. It is a required installation parameter.
+    /// </summary>
+    /// <seealso href="https://github.com/casper-ecosystem/cep-78-enhanced-nft#ownership">https://github.com/casper-ecosystem/cep-78-enhanced-nft#ownership</seealso>
+    /// 
     public enum NFTOwnershipMode
     {
+        /// <summary>
+        /// Minter mode is where the ownership of the newly minted NFT is attributed to the minter of the NFT
+        /// and cannot be specified by the minter. In the Minter mode the owner of the NFT will not change and
+        /// thus cannot be transferred to another entity.
+        /// </summary>
         Minter,
+        /// <summary>
+        /// Assigned mode is where the owner of the newly minted NFT must be specified by the minter of the NFT.
+        /// In this mode, the assigned entity can be either minter themselves or a separate entity. However,
+        /// similar to the Minter mode, the ownership in this mode cannot be changed, and NFTs minted in this mode
+        /// cannot be transferred from one entity to another.
+        /// </summary>
         Assigned,
+        /// <summary>
+        /// In the Transferable mode the owner of the newly minted NFT must be specified by the minter. However,
+        /// in the Transferable mode, NFTs can be transferred from the owner to another entity.
+        /// </summary>
         Transferable
     }
 
+    /// <summary>
+    /// Specifies the commodity that NFTs minted by a particular contract will represent. Currently, the NFTKind
+    /// modality does not alter or govern the behavior of the contract itself and only exists to specify the
+    /// correlation between on-chain data and off-chain items. It is a required installation parameter.
+    /// </summary>
+    /// <seealso href="https://github.com/casper-ecosystem/cep-78-enhanced-nft#nftkind">https://github.com/casper-ecosystem/cep-78-enhanced-nft#ownership</seealso>
     public enum NFTKind
     {
+        /// <summary>
+        /// The NFT represents a real-world physical item e.g., a house.
+        /// </summary>
         Physical,
+        /// <summary>
+        /// The NFT represents a digital item, e.g., a unique JPEG or digital art.
+        /// </summary>
         Digital,
+        /// <summary>
+        /// The NFT is the virtual representation of a physical notion, e.g., a patent or copyright.
+        /// </summary>
         Virtual
     }
 
+    /// <summary>
+    /// Dictates which entities on a Casper network can own and mint NFTs. It is an optional installation parameter
+    /// and will default to the Mixed mode if not provided.
+    /// </summary>
+    /// <see href="https://github.com/casper-ecosystem/cep-78-enhanced-nft#nftholdermode"/>
     public enum NFTHolderMode
     {
+        /// <summary>
+        /// In this mode, only Accounts can own and mint NFTs.
+        /// </summary>
         Accounts,
+        /// <summary>
+        /// In this mode, only Contracts can own and mint NFTs.
+        /// </summary>
         Contracts,
+        /// <summary>
+        /// In this mode both Accounts and Contracts can own and mint NFTs.
+        /// </summary>
         Mixed
     }
 
+    /// <summary>
+    /// Dictates if the contract whitelist restricting access to the mint entrypoint can be updated. It is an
+    /// optional installation parameter and will be set to unlocked if not passed.
+    /// </summary>
     public enum WhitelistMode
     {
+        /// <summary>
+        /// The contract whitelist is unlocked and can be updated via the set variables endpoint.
+        /// </summary>
         Unlocked,
+        /// <summary>
+        /// The contract whitelist is locked and cannot be updated further.
+        /// </summary>
         Locked
     }
 
+    /// <summary>
+    /// Governs the behavior of contract when minting new tokens. It is an optional installation parameter
+    /// and will default to the Installer mode if not provided.
+    /// </summary>
     public enum MintingMode
     {
+        /// <summary>
+        /// This mode restricts the ability to mint new NFT tokens only to the installing account of the NFT contract.
+        /// </summary>
         Installer,
+        /// <summary>
+        /// This mode allows any account to mint NFT tokens.
+        /// </summary>
         Public
     }
 
+    /// <summary>
+    /// Dictates the schema for the metadata for NFTs minted by a given instance of an NFT contract.
+    /// </summary>
     public enum NFTMetadataKind
     {
+        /// <summary>
+        /// This mode specifies that NFTs minted must have valid metadata conforming to the CEP-78 schema.
+        /// </summary>
         CEP78,
+        /// <summary>
+        /// This mode specifies that NFTs minted must have valid metadata conforming to the NFT-721 metadata schema.
+        /// </summary>
         NFT721,
+        /// <summary>
+        /// This mode specifies that metadata validation will not occur and raw strings can be passed to
+        /// token_metadata runtime argument as part of the call to mint entry point.
+        /// </summary>
         Raw,
+        /// <summary>
+        /// This mode specifies that metadata validation will not occur and raw strings can be passed to
+        /// token_metadata runtime argument as part of the call to mint entry point.
+        /// </summary>
         CustomValidated
     }
 
+    /// <summary>
+    /// Governs the primary identifier for NFTs minted for a given instance on an installed contract. It is a
+    /// required installation parameter
+    /// </summary>
     public enum NFTIdentifierMode
     {
+        /// <summary>
+        /// NFTs minted in this modality are identified by a u64 value. This value is determined by the number
+        /// of NFTs minted by the contract at the time the NFT is minted.
+        /// </summary>
         Ordinal,
+        /// <summary>
+        /// NFTs minted in this modality are identified by a base16 encoded representation of the blake2b hash
+        /// of the metadata provided at the time of mint.
+        /// </summary>
         Hash
     }
 
+    /// <summary>
+    /// Governs the behavior around updates to a given NFTs metadata. The Mutable option cannot be used in
+    /// conjunction with the Hash modality for the NFT identifier It is a required installation parameter.
+    /// </summary>
     public enum MetadataMutability
     {
+        /// <summary>
+        /// Metadata for NFTs minted in this mode cannot be updated once the NFT has been minted.
+        /// </summary>
         Immutable,
+        /// <summary>
+        /// Metadata for NFTs minted in this mode can update the metadata via the set_token_metadata entry point.
+        /// </summary>
         Mutable
     }
 
+    /// <summary>
+    /// Dictates whether tokens minted by a given instance of an NFT contract can be burnt.
+    /// </summary>
     public enum BurnMode
     {
+        /// <summary>
+        /// Minted tokens can be burnt.
+        /// </summary>
         Burnable,
+        /// <summary>
+        /// Minted tokens cannot be burnt.
+        /// </summary>
         NonBurnable
     }
 
+    /// <summary>
+    /// A property definition within the custom json schema of the tokens metadata.
+    /// </summary>
     public class JsonSchemaEntry
     {
+        /// <summary>
+        /// Name of the property in the schema.
+        /// </summary>
         [JsonPropertyName("name")] public string Name { get; set; }
 
+        /// <summary>
+        /// Description of the property in the schema.
+        /// </summary>
         [JsonPropertyName("description")] public string Description { get; set; }
 
+        /// <summary>
+        /// Whether the property is required (true) or optional (false).
+        /// </summary>
         [JsonPropertyName("required")] public bool Required { get; set; }
     }
 
+    /// <summary>
+    /// A custom schema for tokens metadata set during contract installation. It must be used in conjunction with
+    /// installation property NFTMetadataKind.CustomValidated. Once provided, the schema for a given instance of
+    /// he contract cannot be changed.
+    /// </summary>
     public class JsonSchema
     {
+        /// <summary>
+        /// Each property has a name, the description of the property itself, and whether the property is required
+        /// to be present in the metadata.
+        /// </summary>
         [JsonPropertyName("properties")] public Dictionary<string, JsonSchemaEntry> Properties { get; set; }
 
         public JsonSchema()
@@ -89,6 +230,10 @@ namespace Casper.Network.SDK.Clients.CEP78
         }
     }
 
+    /// <summary>
+    /// An interface that a custom token metadata class must implement to be used with the client. See
+    /// CEP78TokenMetadata and NFT721tokenMetadata for examples of implementation.
+    /// </summary>
     public interface ITokenMetadata
     {
         string Serialize();
@@ -99,6 +244,9 @@ namespace Casper.Network.SDK.Clients.CEP78
         }
     }
 
+    /// <summary>
+    /// Metadata conforming to the CEP78 metadata schema.
+    /// </summary>
     public class CEP78TokenMetadata : ITokenMetadata
     {
         [JsonPropertyName("name")] public string Name { get; set; }
@@ -111,6 +259,9 @@ namespace Casper.Network.SDK.Clients.CEP78
         }
     }
 
+    /// <summary>
+    /// Metadata conforming to the NFT-721 metadata schema.
+    /// </summary>
     public class NFT721tokenMetadata : ITokenMetadata
     {
         [JsonPropertyName("name")] public string Name { get; set; }
@@ -123,36 +274,94 @@ namespace Casper.Network.SDK.Clients.CEP78
         }
     }
 
+    /// <summary>
+    /// Set of configuration parameters used during the installation of the contract
+    /// </summary>
     public class CEP78InstallArgs
     {
+        /// <summary>
+        /// Name of the contract.
+        /// </summary>
         public string CollectionName { get; set; }
 
+        /// <summary>
+        /// Symbols of the contract.
+        /// </summary>
         public string CollectionSymbol { get; set; }
 
+        /// <summary>
+        /// Maximum number of tokens than will be ever issued by the contract.
+        /// </summary>
         public ulong TokenTotalSupply { get; set; }
 
+        /// <summary>
+        /// Specifies the behavior regarding ownership of NFTs and whether the owner of the NFT can change over the
+        /// contract's lifetime. It is a required installation parameter.
+        /// </summary>
         public NFTOwnershipMode OwnershipMode { get; set; }
 
+        /// <summary>
+        /// Specifies the commodity that NFTs minted by a particular contract will represent. Currently, the NFTKind
+        /// modality does not alter or govern the behavior of the contract itself and only exists to specify the
+        /// correlation between on-chain data and off-chain items. It is a required installation parameter.
+        /// </summary>
         public NFTKind NFTKind { get; set; }
 
+        /// <summary>
+        /// Dictates the schema for the metadata for NFTs minted by a given instance of an NFT contract.
+        /// </summary>
         public NFTMetadataKind NFTMetadataKind { get; set; }
 
+        /// <summary>
+        /// A definition of the token metadata schema. Used in conjunction with NFTMetadataKind.CustomValidated.
+        /// </summary>
         public JsonSchema JsonSchema { get; set; }
 
+        /// <summary>
+        /// Governs the primary identifier for NFTs minted for a given instance on an installed contract. It is a
+        /// required installation parameter
+        /// </summary>
         public NFTIdentifierMode NFTIdentifierMode { get; set; }
 
+        /// <summary>
+        /// Governs the behavior around updates to a given NFTs metadata. The Mutable option cannot be used in
+        /// conjunction with the Hash modality for the NFT identifier It is a required installation parameter.
+        /// </summary>
         public MetadataMutability MetadataMutability { get; set; }
 
+        /// <summary>
+        /// Governs the behavior of contract when minting new tokens. It is an optional installation parameter
+        /// and will default to the Installer mode if not provided.
+        /// </summary>
         public MintingMode? MintingMode { get; set; }
 
+        /// <summary>
+        /// Optional parameter that dictates if minting of tokens is enabled. This value can be changed afterwards with
+        /// the SetVariables() method.
+        /// </summary>
         public bool? AllowMinting { get; set; }
 
+        /// <summary>
+        /// Dictates if the contract whitelist restricting access to the mint entrypoint can be updated. It is an
+        /// optional installation parameter and will be set to unlocked if not passed.
+        /// </summary>
         public WhitelistMode? WhitelistMode { get; set; }
 
+        /// <summary>
+        /// Dictates which entities on a Casper network can own and mint NFTs. It is an optional installation parameter
+        /// and will default to the Mixed mode if not provided.
+        /// </summary>
         public NFTHolderMode? NFTHolderMode { get; set; }
 
+        /// <summary>
+        /// A list of contracts that are allowed to mint tokens. This whitelist dictates which Contracts are allowed
+        /// to mint NFTs in the restricted Installer minting mode. 
+        /// </summary>
         public IEnumerable<HashKey> ContractWhiteList { get; set; }
 
+        /// <summary>
+        /// Dictates whether tokens minted by a given instance of an NFT contract can be burnt.
+        /// </summary>
         public BurnMode? BurnMode { get; set; }
     }
 
@@ -160,24 +369,45 @@ namespace Casper.Network.SDK.Clients.CEP78
     {
         private NFTMetadataKind? _metadataKind;
 
+        /// <summary>
+        /// Gets the contract name.
+        /// </summary>
         public async Task<string> GetCollectionName() =>
             (await GetNamedKey<CLValue>("collection_name")).ToString();
 
+        /// <summary>
+        /// Gets the contract symbol.
+        /// </summary>
         public async Task<string> GetCollectionSymbol() =>
             (await GetNamedKey<CLValue>("collection_symbol")).ToString();
 
+        /// <summary>
+        /// Gets to maximum number of tokens that may be issued in this contract.
+        /// </summary>
         public async Task<ulong> GetTokenTotalSupply() =>
             (await GetNamedKey<CLValue>("total_token_supply")).ToUInt64();
 
+        /// <summary>
+        /// Gets the ownership mode.
+        /// </summary>
         public async Task<NFTOwnershipMode> GetOwnershipMode() =>
             (NFTOwnershipMode) (await GetNamedKey<CLValue>("ownership_mode")).ToByte();
 
+        /// <summary>
+        /// Gets thd NFTKind variable.
+        /// </summary>
         public async Task<NFTKind> GetNFTKind() =>
             (NFTKind) (await GetNamedKey<CLValue>("nft_kind")).ToByte();
 
+        /// <summary>
+        /// Gets the NFTMetadataKind variable.
+        /// </summary>
         public async Task<NFTMetadataKind> GetNFTMetadataKind() =>
             (NFTMetadataKind) (await GetNamedKey<CLValue>("nft_metadata_kind")).ToByte();
 
+        /// <summary>
+        /// Gets the json schema. Valid only for CustomValidated metadata kind.
+        /// </summary>
         public async Task<JsonSchema> GetJsonSchema()
         {
             var json = (await GetNamedKey<CLValue>("json_schema")).ToString();
@@ -188,39 +418,72 @@ namespace Casper.Network.SDK.Clients.CEP78
             return JsonSerializer.Deserialize<JsonSchema>(json);
         }
 
+        /// <summary>
+        /// Gets the NFTIdentifierMode variable.
+        /// </summary>
         public async Task<NFTIdentifierMode> GetNFTIdentifierMode() =>
             (NFTIdentifierMode) (await GetNamedKey<CLValue>("identifier_mode")).ToByte();
 
+        /// <summary>
+        /// Gets the MetadataMutability variable.
+        /// </summary>
         public async Task<MetadataMutability> GetMetadataMutability() =>
             (MetadataMutability) (await GetNamedKey<CLValue>("metadata_mutability")).ToByte();
 
+        /// <summary>
+        /// Gets the MintingMode variable.
+        /// </summary>
         public async Task<MintingMode> GetMintingMode() =>
-            (MintingMode) (await GetNamedKey<CLValue?>("minting_mode")).ToByte();
+            (MintingMode) (await GetNamedKey<CLValue>("minting_mode")).ToByte();
 
+        /// <summary>
+        /// Gets the AllowMinting variable.
+        /// </summary>
         public async Task<bool> GetAllowMinting() =>
             (await GetNamedKey<CLValue>("allow_minting")).ToBoolean();
 
+        /// <summary>
+        /// Gets the contract WhitelistMode variable.
+        /// </summary>
         public async Task<WhitelistMode> GetWhitelistMode() =>
             (WhitelistMode) (await GetNamedKey<CLValue>("whitelist_mode")).ToByte();
 
+        /// <summary>
+        /// Gets the NFTHolderName variable.
+        /// </summary>
         public async Task<NFTHolderMode> GetNFTHolderMode() =>
             (NFTHolderMode) (await GetNamedKey<CLValue>("holder_mode")).ToByte();
 
+        /// <summary>
+        /// Gets the ContractWhitelist variable.
+        /// </summary>
         public async Task<IEnumerable<HashKey>> GetContractWhiteList()
         {
             var value = await GetNamedKey<CLValue>("contract_whitelist");
             return value.ToList<byte[]>().Select(hash => new HashKey(hash));
         }
 
+        /// <summary>
+        /// Gets the BurnMode variable.
+        /// </summary>
         public async Task<BurnMode> GetBurnMode() =>
             (BurnMode) (await GetNamedKey<CLValue>("burn_mode")).ToByte();
 
+        /// <summary>
+        /// Gets the NumberOfMintedTokens variable.
+        /// </summary>
         public async Task<ulong> GetNumberOfMintedTokens() =>
             (await GetNamedKey<CLValue>("number_of_minted_tokens")).ToUInt64();
 
+        /// <summary>
+        /// Gets the ReceiptName variable.
+        /// </summary>
         public async Task<string> GetReceiptName() =>
             (await GetNamedKey<CLValue>("receipt_name")).ToString();
 
+        /// <summary>
+        /// Gets the installer account hash key.
+        /// </summary>
         public async Task<GlobalStateKey> GetInstaller()
         {
             var response = await CasperClient.QueryGlobalState(ContractHash, null, "installer");
@@ -233,40 +496,46 @@ namespace Casper.Network.SDK.Clients.CEP78
                 (long) CEP78ClientErrors.InvalidAccount);
         }
 
+        /// <summary>
+        /// Constructor of the client. Call SetContractHash or SetContractPackageHash before any other method. 
+        /// </summary>
+        /// <param name="casperClient">A valid ICasperClient object.</param>
+        /// <param name="chainName">Name of the network being used.</param>
         public CEP78Client(ICasperClient casperClient, string chainName)
             : base(casperClient, chainName)
         {
             ProcessDeployResult = result =>
             {
                 var executionResult = result.ExecutionResults.FirstOrDefault();
+                
                 if (executionResult is null)
                     throw new ContractException("ExecutionResults null for processed deploy.",
-                        (long) ERC20ClientErrors.OtherError);
+                        (long) CEP78ClientErrors.OtherError);
 
                 if (executionResult.IsSuccess)
                     return;
 
-                if (executionResult.ErrorMessage.Contains("User error: 1"))
-                    throw new ContractException("Deploy not executed. Permission denied",
-                        (long) CEP47ClientErrors.PermissionDenied);
+                var match = Regex.Match(executionResult.ErrorMessage, "User error: ([0-9]+)$");
+                if (match.Success && match.Groups.Count > 1)
+                {
+                    var errorCode  = int.Parse(match.Groups[1].Value);
+                    throw new ContractException("Deploy not executed. " + ((CEP78ClientErrors) errorCode).ToString(),
+                        errorCode);
+                }
 
-                if (executionResult.ErrorMessage.Contains("User error: 2"))
-                    throw new ContractException("Deploy not executed. Wrong arguments",
-                        (long) CEP47ClientErrors.WrongArguments);
-
-                if (executionResult.ErrorMessage.Contains("User error: 3"))
-                    throw new ContractException("Deploy not executed. Token Id already exists",
-                        (long) CEP47ClientErrors.TokenIdAlreadyExists);
-
-                if (executionResult.ErrorMessage.Contains("User error: 4"))
-                    throw new ContractException("Deploy not executed. Token Id doesn't exist",
-                        (long) CEP47ClientErrors.TokenIdDoesntExist);
-
-                throw new ContractException("Deploy not executed. " + executionResult.ErrorMessage,
-                    (long) CEP47ClientErrors.OtherError);
+                throw new ContractException(executionResult.ErrorMessage, (long)CEP78ClientErrors.OtherError);
             };
         }
 
+        /// <summary>
+        /// Prepares a Deploy to make a new install of the CEP47 contract with the given details.
+        /// </summary>
+        /// <param name="wasmBytes">Contract to deploy in WASM format.</param>
+        /// <param name="installArgs">Installation arguments.</param>
+        /// <param name="accountPK">Caller account and owner of the contract.</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper InstallContract(byte[] wasmBytes,
             CEP78InstallArgs installArgs,
             PublicKey accountPK,
@@ -331,6 +600,16 @@ namespace Casper.Network.SDK.Clients.CEP78
             return new DeployHelper(deploy, CasperClient, ProcessDeployResult);
         }
 
+        /// <summary>
+        /// Prepares a Deploy to change the allow_minting and contract_whitelist variables in the contract.
+        /// </summary>
+        /// <param name="ownerPk"></param>
+        /// <param name="allowMinting"></param>
+        /// <param name="ContractWhiteList"></param>
+        /// <param name="paymentMotes"></param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper SetVariables(PublicKey ownerPk,
             bool? allowMinting,
             IEnumerable<HashKey> ContractWhiteList,
@@ -361,13 +640,22 @@ namespace Casper.Network.SDK.Clients.CEP78
                 ttl);
         }
 
+        /// <summary>
+        /// Prepares a Deploy to mint a new token. 
+        /// </summary>
+        /// <param name="minterPk">Caller account.</param>
+        /// <param name="recipientKey">Recipient and owner of the new token.</param>
+        /// <param name="tokenMetadata">Metadata of the token.</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper Mint(PublicKey minterPk,
             GlobalStateKey recipientKey,
-            object tokenMetadata,
+            ITokenMetadata tokenMetadata,
             BigInteger paymentMotes,
             ulong ttl = 1800000)
         {
-            var jsonMetadata = JsonSerializer.Serialize(tokenMetadata);
+            var jsonMetadata = tokenMetadata.Serialize();
 
             var namedArgs = new List<NamedArg>()
             {
@@ -382,6 +670,14 @@ namespace Casper.Network.SDK.Clients.CEP78
                 ttl);
         }
 
+        /// <summary>
+        /// Prepares a Deploy to burn a token. 
+        /// </summary>
+        /// <param name="senderPk">Owner account.</param>
+        /// <param name="tokenId">Token identifier.</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper Burn(PublicKey senderPk,
             ulong tokenId,
             BigInteger paymentMotes,
@@ -399,6 +695,14 @@ namespace Casper.Network.SDK.Clients.CEP78
                 ttl);
         }
 
+        /// <summary>
+        /// Prepares a Deploy to burn a token. 
+        /// </summary>
+        /// <param name="senderPk">Owner account.</param>
+        /// <param name="tokenHash">Token identifier.</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper Burn(PublicKey senderPk,
             string tokenHash,
             BigInteger paymentMotes,
@@ -416,6 +720,15 @@ namespace Casper.Network.SDK.Clients.CEP78
                 ttl);
         }
 
+        /// <summary>
+        /// Prepares a Deploy to Approve an operator for transferring a token on behalf of the owner. 
+        /// </summary>
+        /// <param name="senderPk">Owner account.</param>
+        /// <param name="tokenId">Token identifier.</param>
+        /// <param name="operatorKey">Operator account being approved.</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper Approve(PublicKey senderPk,
             ulong tokenId,
             GlobalStateKey operatorKey,
@@ -435,6 +748,15 @@ namespace Casper.Network.SDK.Clients.CEP78
                 ttl);
         }
 
+        /// <summary>
+        /// Prepares a Deploy to Approve an operator for transferring a token on behalf of the owner
+        /// </summary>
+        /// <param name="senderPk">Owner account.</param>
+        /// <param name="tokenHash">Token identifier.</param>
+        /// <param name="operatorKey">Operator account being approved.</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper Approve(PublicKey senderPk,
             string tokenHash,
             GlobalStateKey operatorKey,
@@ -454,6 +776,14 @@ namespace Casper.Network.SDK.Clients.CEP78
                 ttl);
         }
 
+        /// <summary>
+        /// Prepares a Deploy to Approve an operator for transferring any token owned by the caller on his behalf.
+        /// </summary>
+        /// <param name="senderPk">Owner account.</param>
+        /// <param name="operatorKey">Operator account being approved.</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper ApproveAll(PublicKey senderPk,
             GlobalStateKey operatorKey,
             BigInteger paymentMotes,
@@ -472,6 +802,14 @@ namespace Casper.Network.SDK.Clients.CEP78
                 ttl);
         }
 
+        /// <summary>
+        /// Prepares a Deploy to Approve an operator for transferring any token owned by the caller on his behalf.
+        /// </summary>
+        /// <param name="senderPk">Owner account.</param>
+        /// <param name="operatorKey">Approved operator account.</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper RemoveApproveAll(PublicKey senderPk,
             GlobalStateKey operatorKey,
             BigInteger paymentMotes,
@@ -490,6 +828,16 @@ namespace Casper.Network.SDK.Clients.CEP78
                 ttl);
         }
 
+        /// <summary>
+        /// Prepares a Deploy to transfer a token to a new recipient.
+        /// </summary>
+        /// <param name="callerPk">Caller account.</param>
+        /// <param name="tokenId">Token identifier.</param>
+        /// <param name="ownerKey">Token owner account</param>
+        /// <param name="recipientKey">Recipients account.</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper Transfer(PublicKey callerPk,
             ulong tokenId,
             GlobalStateKey ownerKey,
@@ -511,6 +859,16 @@ namespace Casper.Network.SDK.Clients.CEP78
                 ttl);
         }
 
+        /// <summary>
+        /// Prepares a Deploy to transfer a token to a new recipient.
+        /// </summary>
+        /// <param name="callerPk">Caller account.</param>
+        /// <param name="tokenHash">Token identifier.</param>
+        /// <param name="ownerKey">Token owner account</param>
+        /// <param name="recipientKey">Recipients account.</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper Transfer(PublicKey callerPk,
             string tokenHash,
             GlobalStateKey ownerKey,
@@ -532,6 +890,15 @@ namespace Casper.Network.SDK.Clients.CEP78
                 ttl);
         }
 
+        /// <summary>
+        /// Prepares a Deploy to update the metadata of a token.
+        /// </summary>
+        /// <param name="callerPk">Owner account.</param>
+        /// <param name="tokenId">Token identifier.</param>
+        /// <param name="tokenMetadata">New token metadata.</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper SetTokenMetadata(PublicKey callerPk,
             ulong tokenId,
             ITokenMetadata tokenMetadata,
@@ -553,6 +920,15 @@ namespace Casper.Network.SDK.Clients.CEP78
                 ttl);
         }
 
+        /// <summary>
+        /// Prepares a Deploy to update the metadata of a token.
+        /// </summary>
+        /// <param name="callerPk">Owner account.</param>
+        /// <param name="tokenHash">Token identifier.</param>
+        /// <param name="tokenMetadata">New token metadata.</param>
+        /// <param name="paymentMotes">Payment added to the deploy.</param>
+        /// <param name="ttl">Time to live of the deploy.</param>
+        /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         public DeployHelper SetTokenMetadata(PublicKey callerPk,
             string tokenHash,
             ITokenMetadata tokenMetadata,
@@ -574,6 +950,10 @@ namespace Casper.Network.SDK.Clients.CEP78
                 ttl);
         }
 
+        /// <summary>
+        /// Gets the number of tokens owned by an account.
+        /// </summary>
+        /// <param name="ownerKey">Account hash of the owner being queried.</param>
         public async Task<ulong> GetBalanceOf(GlobalStateKey ownerKey)
         {
             try
@@ -592,11 +972,19 @@ namespace Casper.Network.SDK.Clients.CEP78
             }
         }
 
+        /// <summary>
+        /// Gets the owner of a token.
+        /// </summary>
+        /// <param name="tokenId">Token identifier.</param>
         public async Task<GlobalStateKey> GetOwnerOf(ulong tokenId)
         {
             return await GetOwnerOf(tokenId.ToString());
         }
 
+        /// <summary>
+        /// Gets the owner of a token.
+        /// </summary>
+        /// <param name="tokenHash">Token identifier.</param>
         public async Task<GlobalStateKey> GetOwnerOf(string tokenHash)
         {
             try
@@ -618,9 +1006,8 @@ namespace Casper.Network.SDK.Clients.CEP78
         /// <summary>
         /// Gets a list of tokens owned by a key
         /// </summary>
-        /// <param name="ownerKey"></param>
+        /// <param name="ownerKey">Account hash of the owner being queried.</param>
         /// <typeparam name="TTokenIdentifier">only `ulong` or `string` allowed</typeparam>
-        /// <returns></returns>
         public async Task<IEnumerable<TTokenIdentifier>> GetOwnedTokenIdentifiers<TTokenIdentifier>(GlobalStateKey ownerKey)
         {
             try
@@ -639,11 +1026,19 @@ namespace Casper.Network.SDK.Clients.CEP78
             }
         }
 
+        /// <summary>
+        /// Gets the first ever owner of a token.
+        /// </summary>
+        /// <param name="tokenId">Token identifier.</param>
         public async Task<GlobalStateKey> GetFirstOwnerOf(ulong tokenId)
         {
             return await GetFirstOwnerOf(tokenId.ToString());
         }
 
+        /// <summary>
+        /// Gets the first ever owner of a token.
+        /// </summary>
+        /// <param name="tokenHash">Token identifier.</param>
         public async Task<GlobalStateKey> GetFirstOwnerOf(string tokenHash)
         {
             try
@@ -662,11 +1057,19 @@ namespace Casper.Network.SDK.Clients.CEP78
             }
         }
 
+        /// <summary>
+        /// Gets the raw metadata of a token. Valid only when NFTMetadataKind is CustomValidated.
+        /// </summary>
+        /// <param name="tokenId">Token identifier.</param>
         public async Task<string> GetRawMetadata(ulong tokenId)
         {
             return await GetRawMetadata(tokenId.ToString());
         }
 
+        /// <summary>
+        /// Gets the raw metadata of a token. Valid only when NFTMetadataKind is CustomValidated.
+        /// </summary>
+        /// <param name="tokenHash">Token identifier.</param>
         public async Task<string> GetRawMetadata(string tokenHash)
         {
             try
@@ -698,11 +1101,21 @@ namespace Casper.Network.SDK.Clients.CEP78
             }
         }
 
+        /// <summary>
+        /// Gets token metadata as a parsed object of an specified class.
+        /// </summary>
+        /// <param name="tokenId">Token identifier.</param>
+        /// <typeparam name="T">Type that implements ITokenMetadata.</typeparam>
         public async Task<T> GetMetadata<T>(ulong tokenId) where T : ITokenMetadata
         {
             return await GetMetadata<T>(tokenId.ToString());
         }
 
+        /// <summary>
+        /// Gets token metadata as a parsed object of an specified class.
+        /// </summary>
+        /// <param name="tokenHash">Token identifier.</param>
+        /// <typeparam name="T">Type that implements ITokenMetadata.</typeparam>
         public async Task<T> GetMetadata<T>(string tokenHash) where T : ITokenMetadata
         {
             var jsonString = await GetRawMetadata(tokenHash);
@@ -710,11 +1123,19 @@ namespace Casper.Network.SDK.Clients.CEP78
             return (T) ITokenMetadata.Deserialize<T>(jsonString);
         }
 
+        /// <summary>
+        /// Gets the operator account key that has been approved for transferring the token on behalf of the owner.
+        /// </summary>
+        /// <param name="tokenId">Token identifier.</param>
         public async Task<GlobalStateKey> GetApproved(ulong tokenId)
         {
             return await GetApproved(tokenId.ToString());
         }
 
+        /// <summary>
+        /// Gets the operator account key that has been approved for transferring the token on behalf of the owner.
+        /// </summary>
+        /// <param name="tokenHash">Token identifier.</param>
         public async Task<GlobalStateKey> GetApproved(string tokenHash)
         {
             try
@@ -735,11 +1156,19 @@ namespace Casper.Network.SDK.Clients.CEP78
             }
         }
 
+        /// <summary>
+        /// Checks if the token is burned.
+        /// </summary>
+        /// <param name="tokenId">Token identifier.</param>
         public async Task<bool> IsTokenBurned(ulong tokenId)
         {
             return await IsTokenBurned(tokenId.ToString());
         }
 
+        /// <summary>
+        /// Checks if the token is burned.
+        /// </summary>
+        /// <param name="tokenHash">Token identifier.</param>
         public async Task<bool> IsTokenBurned(string tokenHash)
         {
             try
