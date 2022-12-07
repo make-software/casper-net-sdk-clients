@@ -63,7 +63,7 @@ namespace CallERC20
             {
                 var deployHelper = erc20Client.TransferTokens(user1Key.PublicKey,
                     new AccountHashKey(user2Key.PublicKey),
-                    10_00000, 1_000_000_000);
+                    10_00000, 3_000_000_000);
                     
                 deployHelper.Sign(user1Key);
                 
@@ -95,7 +95,7 @@ namespace CallERC20
             {
                 var deployHelper = erc20Client.ApproveSpender(user1Key.PublicKey,
                     new AccountHashKey(user2Key.PublicKey),
-                    100_00000, 2_000_000_000);
+                    100_00000, 3_000_000_000);
             
                 deployHelper.Sign(user1Key);
                 await deployHelper.PutDeploy();
@@ -130,7 +130,7 @@ namespace CallERC20
                 
                 var deployHelper = erc20Client.TransferTokensFromOwner(user2Key.PublicKey,
                     new AccountHashKey(user1Key.PublicKey),
-                    contractPackageHash, 50_00000, 2_000_000_000);
+                    contractPackageHash, 50_00000, 5_000_000_000);
             
                 deployHelper.Sign(user2Key);
                 await deployHelper.PutDeploy();
