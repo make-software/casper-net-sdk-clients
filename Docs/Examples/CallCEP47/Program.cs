@@ -75,7 +75,7 @@ namespace CallCEP47
             try
             {
                 var deployHelper = cep47Client.MintOne(user1Key.PublicKey, new AccountHashKey(user1Key.PublicKey),
-                    TOKEN_ID, meta, 12_000_000_000);
+                    TOKEN_ID, meta, 18_000_000_000);
             
                 deployHelper.Sign(user1Key);
                 
@@ -111,7 +111,7 @@ namespace CallCEP47
             try
             {
                 var deployHelper = cep47Client.TransferToken(user1Key.PublicKey, new AccountHashKey(user2Key.PublicKey),
-                    new List<BigInteger>() { TOKEN_ID }, 12_000_000_000);
+                    new List<BigInteger>() { TOKEN_ID }, 18_000_000_000);
 
                 deployHelper.Sign(user1Key);
                 await deployHelper.PutDeploy();
@@ -145,7 +145,7 @@ namespace CallCEP47
             try
             {
                 var deployHelper = cep47Client.BurnOne(user2Key.PublicKey, new AccountHashKey(user2Key.PublicKey),
-                    TOKEN_ID, 12_000_000_000);
+                    TOKEN_ID, 18_000_000_000);
 
                 deployHelper.Sign(user2Key);
                 await deployHelper.PutDeploy();
