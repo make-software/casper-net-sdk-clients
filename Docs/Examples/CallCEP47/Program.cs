@@ -16,7 +16,7 @@ namespace CallCEP47
         {
             var nodeAddress = "http://127.0.0.1:11101";
             const string CHAIN_NAME = "casper-net-1";
-            var TOKEN_ID  = BigInteger.One;
+			var TOKEN_ID  = new BigInteger(DateUtils.ToEpochTime(DateTime.Now));
             
             //
             // Set up a new Casper RPC Client
