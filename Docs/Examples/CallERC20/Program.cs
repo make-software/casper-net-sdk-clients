@@ -16,6 +16,7 @@ namespace CallERC20
         {
             var nodeAddress = "http://127.0.0.1:11101";
             const string CHAIN_NAME = "casper-net-1";
+            byte decimals;
             
             //
             // Set up a new Casper RPC Client
@@ -34,10 +35,17 @@ namespace CallERC20
             {
                 await erc20Client.SetContractHash(user1Key.PublicKey, $"erc20_token_contract");
 
-                Console.WriteLine("ERC20 contract name: " + erc20Client.Name);
-                Console.WriteLine("ERC20 contract symbol: " + erc20Client.Symbol);
-                Console.WriteLine("ERC20 decimals: " + erc20Client.Decimals);
-                Console.WriteLine("ERC20 total supply: " + FormatAmount(erc20Client.TotalSupply, erc20Client.Decimals));
+                var name = await erc20Client.GetName();
+                Console.WriteLine("ERC20 contract name: " + name);
+
+                var symbol = await erc20Client.GetSymbol();
+                Console.WriteLine("ERC20 contract symbol: " + symbol);
+
+                decimals = await erc20Client.GetDecimals();
+                Console.WriteLine("ERC20 decimals: " + decimals);
+
+                var totalSupply = await erc20Client.GetTotalSupply();
+                Console.WriteLine("ERC20 total supply: " + FormatAmount(totalSupply, decimals));
             }
             catch (ContractException e)
             {
@@ -66,10 +74,10 @@ namespace CallERC20
                 Console.WriteLine();
 
                 var count = await erc20Client.GetBalance(new AccountHashKey(user1Key.PublicKey));
-                Console.WriteLine("User1 balance: " + FormatAmount(count, erc20Client.Decimals));
+                Console.WriteLine("User1 balance: " + FormatAmount(count, decimals));
 
                 count = await erc20Client.GetBalance(new AccountHashKey(user2Key.PublicKey));
-                Console.WriteLine("User2 balance: " + FormatAmount(count, erc20Client.Decimals));
+                Console.WriteLine("User2 balance: " + FormatAmount(count, decimals));
             }
             catch (ContractException e)
             {
@@ -82,7 +90,6 @@ namespace CallERC20
             //
             Console.WriteLine();
             Console.WriteLine("Approve an spender...");
-            
             
             try
             {
@@ -99,7 +106,7 @@ namespace CallERC20
                 var count = await erc20Client.GetAllowance(new AccountHashKey(user1Key.PublicKey),
                     new AccountHashKey(user2Key.PublicKey));
                 
-                Console.WriteLine("User2 approval from User1: " + FormatAmount(count, erc20Client.Decimals));
+                Console.WriteLine("User2 approval from User1: " + FormatAmount(count, decimals));
             }
             catch (ContractException e)
             {
@@ -131,8 +138,8 @@ namespace CallERC20
                 
                 Console.WriteLine("Transfer-from cost: " + deployHelper.ExecutionResult.Cost);
             
-                var count = await erc20Client.GetBalance(erc20Client.ContractHash);
-                Console.WriteLine("Contract balance: " + FormatAmount(count, erc20Client.Decimals));
+                var count = await erc20Client.GetBalance(contractPackageHash);
+                Console.WriteLine("Contract balance: " + FormatAmount(count, decimals));
             }
             catch (ContractException e)
             {

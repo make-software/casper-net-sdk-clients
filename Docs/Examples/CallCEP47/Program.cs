@@ -34,8 +34,10 @@ namespace CallCEP47
             {
                 await cep47Client.SetContractHash(user1Key.PublicKey, $"example_nft_contract_hash");
 
-                Console.WriteLine("CEP47 contract name: " + cep47Client.Name);
-                Console.WriteLine("CEP47 contract symbol: " + cep47Client.Symbol);
+                var name = await cep47Client.GetName();
+                Console.WriteLine("CEP47 contract name: " + name);
+                var symbol = await cep47Client.GetSymbol();
+                Console.WriteLine("CEP47 contract symbol: " + symbol);
                 
                 var k = await cep47Client.GetTotalSupply();
                 Console.WriteLine("CEP47 total supply: " + k);
