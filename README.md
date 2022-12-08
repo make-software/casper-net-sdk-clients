@@ -30,9 +30,18 @@ Install-Package Casper.Network.SDK.Clients
 dotnet add package Casper.Network.SDK.Clients
 ``` 
 
+## Integration tests
+
+To run the test suite you need to spin up a local NCTL network. We recommend using Docker to quickly have it running. See the instructions [here](https://github.com/make-software/casper-nctl-docker)
+
+When NCTL is running, enter the following command to execute the tests:
+
+```
+dotnet test --settings Casper.Network.SDK.Clients.Test/test.runsettings --filter 'TestCategory~NCTL'
+```
+
 ## Create a workspace in Gitpod
 
 Click the button to start coding in Gitpod with an online IDE.
 
 [![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/make-software/casper-net-sdk-clients)
-
