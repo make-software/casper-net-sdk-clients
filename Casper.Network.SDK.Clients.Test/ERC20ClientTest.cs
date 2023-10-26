@@ -204,7 +204,7 @@ namespace Casper.Network.SDK.Clients.Test
                _ownerAccountKey,
                 _contractHash,
                 300_000, 
-                1_000_000_000);
+                3_000_000_000);
             
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);
@@ -308,7 +308,7 @@ namespace Casper.Network.SDK.Clients.Test
                 _ownerAccountKey,
                 _contractHash,
                 300_000, 
-                1_000_000_000);
+                3_000_000_000);
             
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);

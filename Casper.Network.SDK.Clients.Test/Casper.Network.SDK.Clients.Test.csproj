@@ -20,6 +20,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\..\casper-net-sdk\Casper.Network.SDK\Casper.Network.SDK.csproj" />
       <ProjectReference Include="..\Casper.Network.SDK.Clients\Casper.Network.SDK.Clients.csproj" />
     </ItemGroup>
 

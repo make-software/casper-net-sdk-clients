@@ -92,7 +92,7 @@ namespace Casper.Network.SDK.Clients.Test
                 // ACLWhitelist = whitelist,
             };
             
-            var deployHelper = client.InstallContract(wasmBytes, installArgs, _ownerAccount.PublicKey, 180_000_000_000);
+            var deployHelper = client.InstallContract(wasmBytes, installArgs, _ownerAccount.PublicKey, 380_000_000_000);
 
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);
@@ -120,7 +120,7 @@ namespace Casper.Network.SDK.Clients.Test
         {
             _cep78Client = new CEP78Client(new NetCasperClient(_nodeAddress), CHAIN_NAME);
 
-            await _cep78Client.SetContractHash(_ownerAccount.PublicKey, $"nft_contract");
+            await _cep78Client.SetContractHash(_ownerAccount.PublicKey, $"cep78_contract_hash_{TOKEN_NAME}");
 
             if (_contractHash != null)
                 Assert.AreEqual(_contractHash.ToString(), _cep78Client.ContractHash.ToString());
@@ -192,7 +192,7 @@ namespace Casper.Network.SDK.Clients.Test
             var deployHelper = _cep78Client.Mint(_user2Account.PublicKey,
                 _user2AccountKey,
                 metadata,
-                1_000_000_000);
+                3_000_000_000);
 
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);
@@ -232,7 +232,7 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.IsNotNull(_cep78Client, "This test must run after SetContractHashFromPKTest");
 
             var deployHelper = _cep78Client.Transfer(_user2Account.PublicKey,
-                0, _user2AccountKey, _user1AccountKey, 2_000_000_000);
+                0, _user2AccountKey, _user1AccountKey, 6_000_000_000);
             
             deployHelper.Sign(_user2Account);
 
@@ -262,7 +262,7 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.IsNotNull(_cep78Client, "This test must run after SetContractHashFromPKTest");
 
             var deployHelper = _cep78Client.Approve(_user1Account.PublicKey,
-                0, _user2AccountKey, 2_000_000_000);
+                0, _user2AccountKey, 6_000_000_000);
             
             deployHelper.Sign(_user1Account);
 
@@ -294,7 +294,7 @@ namespace Casper.Network.SDK.Clients.Test
                 Checksum = "987654321098765432109876543210987654321098765432"
             };
             var deployHelper = _cep78Client.SetTokenMetadata(_user1Account.PublicKey,
-                0, newTokenMetadata, 2_000_000_000);
+                0, newTokenMetadata, 6_000_000_000);
             
             deployHelper.Sign(_user1Account);
 
@@ -319,7 +319,7 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.IsNotNull(_cep78Client, "This test must run after SetContractHashFromPKTest");
             
             var deployHelper = _cep78Client.Transfer(_user2Account.PublicKey,
-                0, _user1AccountKey, _ownerAccountKey, 2_000_000_000);
+                0, _user1AccountKey, _ownerAccountKey, 6_000_000_000);
             
             deployHelper.Sign(_user2Account);
 
@@ -345,7 +345,7 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.IsNotNull(_cep78Client, "This test must run after SetContractHashFromPKTest");
             
             var deployHelper = _cep78Client.Burn(_ownerAccount.PublicKey,
-                0,  2_000_000_000);
+                0,  6_000_000_000);
             
             deployHelper.Sign(_ownerAccount);
 
@@ -386,7 +386,7 @@ namespace Casper.Network.SDK.Clients.Test
                 NFTHolderMode = NFTHolderMode.Accounts,
             };
             
-            var deployHelper = client.InstallContract(wasmBytes, installArgs, _user1Account.PublicKey, 180_000_000_000);
+            var deployHelper = client.InstallContract(wasmBytes, installArgs, _user1Account.PublicKey, 500_000_000_000);
 
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);
@@ -425,7 +425,7 @@ namespace Casper.Network.SDK.Clients.Test
             var deployHelper = _cep78Client.Mint(_user2Account.PublicKey,
                 _user2AccountKey,
                 metadata,
-                1_000_000_000);
+                6_000_000_000);
 
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);
@@ -477,7 +477,7 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.IsNotEmpty(tokenHash);
 
             var deployHelper = _cep78Client.ApproveAll(_user2Account.PublicKey, _user1AccountKey,
-                2_000_000_000);
+                6_000_000_000);
             
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);
@@ -504,7 +504,7 @@ namespace Casper.Network.SDK.Clients.Test
             var tokenHash =  hashes.FirstOrDefault();
             Assert.IsNotEmpty(tokenHash);
 
-            var deployHelper = _cep78Client.Burn(_user2Account.PublicKey, tokenHash, 2_000_000_000);
+            var deployHelper = _cep78Client.Burn(_user2Account.PublicKey, tokenHash, 6_000_000_000);
             
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);
@@ -547,7 +547,7 @@ namespace Casper.Network.SDK.Clients.Test
                 JsonSchema = jsonSchema,
             };
             
-            var deployHelper = client.InstallContract(wasmBytes, installArgs, _user2Account.PublicKey, 180_000_000_000);
+            var deployHelper = client.InstallContract(wasmBytes, installArgs, _user2Account.PublicKey, 500_000_000_000);
 
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);
@@ -614,7 +614,7 @@ namespace Casper.Network.SDK.Clients.Test
             var deployHelper = _cep78Client.Mint(_user2Account.PublicKey,
                 _user2AccountKey,
                 metadata,
-                1_000_000_000);
+                6_000_000_000);
 
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);
@@ -660,8 +660,12 @@ namespace Casper.Network.SDK.Clients.Test
             
             var deployHelper = _cep78Client.SetVariables(_user2Account.PublicKey,
                 allowMinting: false,
+                null,
+                null,
+                null,
+                null,
                 whitelist,
-                2_000_000_000);
+                6_000_000_000);
 
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);

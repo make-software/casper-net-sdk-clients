@@ -27,5 +27,9 @@
       <None Include="README_nuget.md" Pack="true" PackagePath="\" />
       <None Include="..\LICENSE" Pack="true" PackagePath="\" />
     </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\casper-net-sdk\Casper.Network.SDK\Casper.Network.SDK.csproj" />
+    </ItemGroup>
     
 </Project>

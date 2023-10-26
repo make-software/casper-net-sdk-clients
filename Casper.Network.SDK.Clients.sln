@@ -4,6 +4,16 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Casper.Network.SDK.Clients"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Casper.Network.SDK.Clients.Test", "Casper.Network.SDK.Clients.Test\Casper.Network.SDK.Clients.Test.csproj", "{75C8FFB3-A85D-4124-A4B2-DE66D5FAEF46}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CallERC20", "Docs\Examples\CallERC20\CallERC20.csproj", "{CA2987B0-3FBE-4FCA-8BD4-A1195DCF09FC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CallCEP47", "Docs\Examples\CallCEP47\CallCEP47.csproj", "{67934398-9EE2-4A0C-9394-F120AED76D75}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CEP78Test", "CEP78Test\CEP78Test.csproj", "{3EE17BEB-96F3-402D-A9FB-7CF2144B13C4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SetContractPackageTest", "SetContractPackageTest\SetContractPackageTest.csproj", "{15277DB8-360D-47A8-8C76-6E14CC468B4D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Casper.Network.SDK", "..\casper-net-sdk\Casper.Network.SDK\Casper.Network.SDK.csproj", "{73B4DAB5-5A3A-4AB6-B62E-7D668BD324A5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +28,25 @@ Global
 		{75C8FFB3-A85D-4124-A4B2-DE66D5FAEF46}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{75C8FFB3-A85D-4124-A4B2-DE66D5FAEF46}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{75C8FFB3-A85D-4124-A4B2-DE66D5FAEF46}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CA2987B0-3FBE-4FCA-8BD4-A1195DCF09FC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CA2987B0-3FBE-4FCA-8BD4-A1195DCF09FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CA2987B0-3FBE-4FCA-8BD4-A1195DCF09FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CA2987B0-3FBE-4FCA-8BD4-A1195DCF09FC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{67934398-9EE2-4A0C-9394-F120AED76D75}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{67934398-9EE2-4A0C-9394-F120AED76D75}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{67934398-9EE2-4A0C-9394-F120AED76D75}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{67934398-9EE2-4A0C-9394-F120AED76D75}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3EE17BEB-96F3-402D-A9FB-7CF2144B13C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3EE17BEB-96F3-402D-A9FB-7CF2144B13C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3EE17BEB-96F3-402D-A9FB-7CF2144B13C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3EE17BEB-96F3-402D-A9FB-7CF2144B13C4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{15277DB8-360D-47A8-8C76-6E14CC468B4D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{15277DB8-360D-47A8-8C76-6E14CC468B4D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{15277DB8-360D-47A8-8C76-6E14CC468B4D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{15277DB8-360D-47A8-8C76-6E14CC468B4D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{73B4DAB5-5A3A-4AB6-B62E-7D668BD324A5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{73B4DAB5-5A3A-4AB6-B62E-7D668BD324A5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{73B4DAB5-5A3A-4AB6-B62E-7D668BD324A5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{73B4DAB5-5A3A-4AB6-B62E-7D668BD324A5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

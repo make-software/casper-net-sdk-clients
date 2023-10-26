@@ -169,7 +169,7 @@ namespace Casper.Network.SDK.Clients.Test
                 _user2AccountKey,
                 new BigInteger(1),
                 tokenMeta,
-                1_000_000_000);
+                90_000_000_000);
 
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);
@@ -202,7 +202,7 @@ namespace Casper.Network.SDK.Clients.Test
                 _user2AccountKey,
                 new BigInteger(1),
                 tokenMeta,
-                1_000_000_000);
+                90_000_000_000);
 
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);
@@ -274,7 +274,7 @@ namespace Casper.Network.SDK.Clients.Test
             var deployHelper = _cep47Client.UpdateTokenMetadata(_user2Account.PublicKey,
                 new BigInteger(1),
                 tokenMeta,
-                1_000_000_000);
+                90_000_000_000);
 
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);
@@ -306,7 +306,7 @@ namespace Casper.Network.SDK.Clients.Test
             var deployHelper = _cep47Client.UpdateTokenMetadata(_user2Account.PublicKey,
                 new BigInteger(3),
                 tokenMeta,
-                1_000_000_000);
+                90_000_000_000);
 
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);
@@ -337,7 +337,7 @@ namespace Casper.Network.SDK.Clients.Test
                 _user2AccountKey,
                 tokenIds,
                 tokenMeta,
-                3_000_000_000);
+                90_000_000_000);
 
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);
@@ -378,7 +378,7 @@ namespace Casper.Network.SDK.Clients.Test
                 _user1AccountKey,
                 tokenIds,
                 tokenMetas,
-                30_000_000_000);
+                90_000_000_000);
 
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);
@@ -441,7 +441,7 @@ namespace Casper.Network.SDK.Clients.Test
             var deployHelper = _cep47Client.TransferToken(_user2Account.PublicKey,
                 _user1AccountKey,
                 new List<BigInteger>() {new(10), new(11)},
-                2_000_000_000);
+                15_000_000_000);
 
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);
@@ -467,7 +467,7 @@ namespace Casper.Network.SDK.Clients.Test
             var deployHelper = _cep47Client.Approve(_user2Account.PublicKey,
                 _user1AccountKey,
                 new List<BigInteger>() {new(12)},
-                2_000_000_000);
+                5_000_000_000);
 
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);
@@ -498,7 +498,7 @@ namespace Casper.Network.SDK.Clients.Test
                 _user2AccountKey,
                 _ownerAccountKey,
                 new List<BigInteger>() {new(12)},
-                2_000_000_000);
+                15_000_000_000);
 
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);
@@ -524,7 +524,7 @@ namespace Casper.Network.SDK.Clients.Test
             var deployHelper = _cep47Client.BurnOne(_user1Account.PublicKey,
                 _user1AccountKey,
                 new BigInteger(20),
-                1_000_000_000);
+                90_000_000_000);
 
             Assert.IsNotNull(deployHelper);
             Assert.IsNotNull(deployHelper.Deploy);
@@ -546,7 +546,7 @@ namespace Casper.Network.SDK.Clients.Test
             var deployHelper2 = _cep47Client.BurnMany(_user1Account.PublicKey,
                 _user1AccountKey,
                 new List<BigInteger>() {new(21), new(22)},
-                2_000_000_000);
+                15_000_000_000);
 
             Assert.IsNotNull(deployHelper2);
             Assert.IsNotNull(deployHelper2.Deploy);

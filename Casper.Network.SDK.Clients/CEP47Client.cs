@@ -271,6 +271,25 @@ namespace Casper.Network.SDK.Clients
                 ttl);
         }
 
+        public DeployHelper TransferToken(PublicKey ownerPk,
+            GlobalStateKey recipientKey,
+            List<CLValue> tokenIds,
+            BigInteger paymentMotes,
+            ulong ttl = 1800000)
+        {
+            var clTokenIds = CLValue.List(tokenIds.ToArray());
+
+            return BuildDeployHelper("transfer",
+                new List<NamedArg>()
+                {
+                    new NamedArg("recipient", CLValue.Key(recipientKey)),
+                    new NamedArg("token_ids", clTokenIds),
+                },
+                ownerPk,
+                paymentMotes,
+                ttl);
+        }
+        
         /// <summary>
         /// Prepares a Deploy to approve a spender to make transfers of tokens on behalf of the owner.
         /// </summary>
@@ -581,6 +600,19 @@ namespace Casper.Network.SDK.Clients
                 ttl);
         }
 
+        public DeployHelper BurnOne(PublicKey senderPk,
+            GlobalStateKey ownerKey,
+            CLValue tokenId,
+            BigInteger paymentMotes,
+            ulong ttl = 1800000)
+        {
+            return BurnMany(senderPk,
+                ownerKey,
+                new List<CLValue>() {tokenId},
+                paymentMotes,
+                ttl);
+        }
+        
         /// <summary>
         /// Burns a list of tokens
         /// </summary>
@@ -609,6 +641,26 @@ namespace Casper.Network.SDK.Clients
                 senderPk,
                 paymentMotes,
                 ttl);
+        }
+
+        public DeployHelper BurnMany(PublicKey senderPk,
+            GlobalStateKey ownerKey,
+            List<CLValue> tokenIds,
+            BigInteger paymentMotes,
+            ulong ttl = 1800000)
+        {
+            // create a list of U256 for the token ids
+            //
+            var clTokenIds = CLValue.List(tokenIds.ToArray());
+
+            return BuildDeployHelper("burn",
+                new List<NamedArg>()
+                {
+                    new NamedArg("owner", CLValue.Key(ownerKey)),
+                    new NamedArg("token_ids", clTokenIds)
+                },
+                senderPk,
+                paymentMotes);
         }
     }
 

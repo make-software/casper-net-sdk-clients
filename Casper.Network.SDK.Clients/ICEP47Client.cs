@@ -140,6 +140,12 @@ namespace Casper.Network.SDK.Clients
             List<BigInteger> tokenIds,
             BigInteger paymentMotes,
             ulong ttl = 1800000);
+        
+        DeployHelper TransferToken(PublicKey ownerPk,
+            GlobalStateKey recipientKey,
+            List<CLValue> tokenIds,
+            BigInteger paymentMotes,
+            ulong ttl = 1800000);
 
         /// <summary>
         /// Prepares a Deploy to approve a spender to make transfers of tokens on behalf of the owner.
@@ -240,6 +246,12 @@ namespace Casper.Network.SDK.Clients
             BigInteger tokenId,
             BigInteger paymentMotes,
             ulong ttl = 1800000);
+        
+        DeployHelper BurnOne(PublicKey senderPk,
+            GlobalStateKey ownerKey,
+            CLValue tokenId,
+            BigInteger paymentMotes,
+            ulong ttl = 1800000);
 
         /// <summary>
         /// Burns a list of tokens
@@ -253,6 +265,12 @@ namespace Casper.Network.SDK.Clients
         DeployHelper BurnMany(PublicKey senderPk,
             GlobalStateKey ownerKey,
             List<BigInteger> tokenIds,
+            BigInteger paymentMotes,
+            ulong ttl = 1800000);
+        
+        DeployHelper BurnMany(PublicKey senderPk,
+            GlobalStateKey ownerKey,
+            List<CLValue> tokenIds,
             BigInteger paymentMotes,
             ulong ttl = 1800000);
     }
