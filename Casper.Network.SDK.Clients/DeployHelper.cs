@@ -51,13 +51,13 @@ namespace Casper.Network.SDK.Clients
         
         private ProcessDeployResult _processDeployResultCallback;
         
-        internal DeployHelper(Deploy deploy, ICasperClient casperClient)
+        public  DeployHelper(Deploy deploy, ICasperClient casperClient)
         {
             Deploy = deploy;
             _casperClient = casperClient;
         }
         
-        internal DeployHelper(Deploy deploy, ICasperClient casperClient, 
+        public DeployHelper(Deploy deploy, ICasperClient casperClient, 
             ProcessDeployResult processDeployResult)
         {
             Deploy = deploy;

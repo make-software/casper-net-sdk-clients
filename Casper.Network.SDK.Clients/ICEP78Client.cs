@@ -33,7 +33,7 @@ namespace Casper.Network.SDK.Clients.CEP78
 
         Task<NFTHolderMode> GetNFTHolderMode();
 
-        Task<IEnumerable<HashKey>> GetContractWhiteList();
+        Task<IEnumerable<GlobalStateKey>> GetACLWhiteList();
 
         Task<BurnMode> GetBurnMode();
 
@@ -96,7 +96,11 @@ namespace Casper.Network.SDK.Clients.CEP78
         /// <returns>A DeployHelper object that must be signed with the caller private key before sending it to the network.</returns>
         DeployHelper SetVariables(PublicKey ownerPk,
             bool? allowMinting,
-            IEnumerable<HashKey> ContractWhiteList,
+            bool? aclPackageMode,
+            bool? aclPackageOperatorMode,
+            bool? operatorBurnMode,
+            IEnumerable<AccountHashKey> accountsWhitelist,
+            IEnumerable<HashKey> contractsWhitelist,
             BigInteger paymentMotes,
             ulong ttl = 1800000);
         

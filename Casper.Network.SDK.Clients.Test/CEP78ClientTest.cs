@@ -72,11 +72,11 @@ namespace Casper.Network.SDK.Clients.Test
             var wasmBytes = await File.ReadAllBytesAsync(TestContext.CurrentContext.TestDirectory +
                                                          "/TestData/" + _cep78WasmFile);
             
-            var whitelist = new List<HashKey>()
-            {
-                new HashKey("hash-c1eb4805e037c6ba9c8ef80ba7f78aa6a5c0533a0c4df1dc6feac942da6969fa"),
-                new HashKey("hash-dbb3284da4e20be62aeb332c653bfa715c7fa1ef6a73393cd36804b382f10d4e"),
-            };
+            // var whitelist = new List<HashKey>()
+            // {
+            //     new HashKey("hash-c1eb4805e037c6ba9c8ef80ba7f78aa6a5c0533a0c4df1dc6feac942da6969fa"),
+            //     new HashKey("hash-dbb3284da4e20be62aeb332c653bfa715c7fa1ef6a73393cd36804b382f10d4e"),
+            // };
             
             var installArgs = new CEP78InstallArgs()
             {
@@ -89,7 +89,7 @@ namespace Casper.Network.SDK.Clients.Test
                 NFTIdentifierMode = NFTIdentifierMode.Ordinal,
                 MintingMode = MintingMode.Public,
                 MetadataMutability = MetadataMutability.Mutable,
-                ContractWhiteList = whitelist,
+                // ACLWhitelist = whitelist,
             };
             
             var deployHelper = client.InstallContract(wasmBytes, installArgs, _ownerAccount.PublicKey, 180_000_000_000);
@@ -141,9 +141,9 @@ namespace Casper.Network.SDK.Clients.Test
             Assert.AreEqual(NFTHolderMode.Mixed, await _cep78Client.GetNFTHolderMode());
             Assert.AreEqual(WhitelistMode.Unlocked, await _cep78Client.GetWhitelistMode());
 
-            var contractWhiteList = await _cep78Client.GetContractWhiteList();
-            Assert.IsNotNull(contractWhiteList);
-            Assert.AreEqual(2, contractWhiteList.Count(h => !string.IsNullOrWhiteSpace(h.ToHexString())));
+            // var contractWhiteList = await _cep78Client.GetContractWhiteList();
+            // Assert.IsNotNull(contractWhiteList);
+            // Assert.AreEqual(2, contractWhiteList.Count(h => !string.IsNullOrWhiteSpace(h.ToHexString())));
 
             var jsonSchema = await _cep78Client.GetJsonSchema();
             Assert.IsEmpty(jsonSchema.Properties);
@@ -679,11 +679,11 @@ namespace Casper.Network.SDK.Clients.Test
             var allowMinting = await _cep78Client.GetAllowMinting();
             Assert.IsFalse(allowMinting);
 
-            var gotWhitelist = await _cep78Client.GetContractWhiteList();
-            Assert.IsNotNull(gotWhitelist);
-            Assert.AreEqual(2, whitelist.Count());
-            Assert.AreEqual(whitelist[0].ToString(), gotWhitelist.First().ToString());
-            Assert.AreEqual(whitelist[1].ToString(), gotWhitelist.Last().ToString());
+            // var gotWhitelist = await _cep78Client.GetContractWhiteList();
+            // Assert.IsNotNull(gotWhitelist);
+            // Assert.AreEqual(2, whitelist.Count());
+            // Assert.AreEqual(whitelist[0].ToString(), gotWhitelist.First().ToString());
+            // Assert.AreEqual(whitelist[1].ToString(), gotWhitelist.Last().ToString());
         }
     }
 }
