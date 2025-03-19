@@ -12,7 +12,7 @@ namespace Casper.Network.SDK.Clients
     /// </summary>
     public abstract class ClientBase
     {
-        protected const ulong DEFAULT_GAS_PRICE = 1;
+        protected const ulong DEFAULT_GAS_PRICE = 3;
 
         protected readonly string ChainName;
         protected readonly ICasperClient CasperClient;
